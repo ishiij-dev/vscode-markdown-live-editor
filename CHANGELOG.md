@@ -2,6 +2,13 @@
 
 All notable changes to Markdown Live Editor will be documented in this file.
 
+## [0.2.1] - 2026-03-02
+
+### Changed
+
+- Lower minimum VS Code engine version from `^1.109.0` to `^1.75.0` for Cursor editor compatibility
+- Add OpenVSX Registry publish step to release workflow
+
 ## [0.2.0] - 2026-03-02
 
 ### Added
