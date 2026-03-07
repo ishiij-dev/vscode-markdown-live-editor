@@ -1,5 +1,10 @@
 import * as vscode from 'vscode';
-import type { HeadingItem, OutlineProvider } from './outlineProvider';
+import {
+	type HeadingItem,
+	type HostToEditorMessage,
+	isEditorToHostMessage,
+} from '../protocol/messages';
+import type { OutlineProvider } from './outlineProvider';
 
 export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider {
 	public static readonly viewType = 'markdownLiveEditor.editor';
@@ -39,10 +44,11 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider {
 			vscode.commands.registerCommand(
 				'markdownLiveEditor.scrollToHeading',
 				(pos: number) => {
-					provider.activeWebviewPanel?.webview.postMessage({
+					const message: HostToEditorMessage = {
 						type: 'scrollToHeading',
 						pos,
-					});
+					};
+					provider.activeWebviewPanel?.webview.postMessage(message);
 				},
 			),
 		);
@@ -86,17 +92,21 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider {
 
 		// Handle all messages from the webview in a single listener
 		const onDidReceiveMessage = webviewPanel.webview.onDidReceiveMessage(
-			(message) => {
+			(message: unknown) => {
+				if (!isEditorToHostMessage(message)) {
+					return;
+				}
 				switch (message.type) {
 					case 'ready': {
 						const documentDirUri = webviewPanel.webview
 							.asWebviewUri(documentDir)
 							.toString();
-						webviewPanel.webview.postMessage({
+						const initMessage: HostToEditorMessage = {
 							type: 'init',
 							body: document.getText(),
 							documentDirUri,
-						});
+						};
+						webviewPanel.webview.postMessage(initMessage);
 						break;
 					}
 					case 'update': {
@@ -123,12 +133,9 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider {
 					}
 					case 'wordCount': {
 						if (this.activeWebviewPanel === webviewPanel) {
-							const w = message.words as number;
-							const c = message.characters as number;
-							const sel = message.selection as {
-								words: number;
-								characters: number;
-							} | null;
+							const w = message.words;
+							const c = message.characters;
+							const sel = message.selection;
 							this.wordCountStatusBar.text = sel
 								? `Words: ${sel.words}/${w} | Chars: ${sel.characters}/${c}`
 								: `Words: ${w} | Chars: ${c}`;
@@ -152,10 +159,11 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider {
 				if (currentText === lastWebviewContent) {
 					return;
 				}
-				webviewPanel.webview.postMessage({
+				const updateMessage: HostToEditorMessage = {
 					type: 'update',
 					body: currentText,
-				});
+				};
+				webviewPanel.webview.postMessage(updateMessage);
 			},
 		);
 
@@ -168,8 +176,14 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider {
 					'markdownLiveEditor.outlineAvailable',
 					true,
 				);
-				webviewPanel.webview.postMessage({ type: 'requestHeadings' });
-				webviewPanel.webview.postMessage({ type: 'requestWordCount' });
+				const requestHeadingsMessage: HostToEditorMessage = {
+					type: 'requestHeadings',
+				};
+				const requestWordCountMessage: HostToEditorMessage = {
+					type: 'requestWordCount',
+				};
+				webviewPanel.webview.postMessage(requestHeadingsMessage);
+				webviewPanel.webview.postMessage(requestWordCountMessage);
 			} else if (this.activeWebviewPanel === webviewPanel) {
 				this.wordCountStatusBar.hide();
 			}

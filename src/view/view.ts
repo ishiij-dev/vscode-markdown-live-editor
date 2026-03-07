@@ -12,6 +12,11 @@ import { gfm } from '@milkdown/preset-gfm';
 import type { Node as ProseMirrorNode } from '@milkdown/prose/model';
 import { Plugin, TextSelection } from '@milkdown/prose/state';
 import { $prose } from '@milkdown/utils';
+import {
+	type EditorToHostMessage,
+	type HostToEditorMessage,
+	isHostToEditorMessage,
+} from '../protocol/messages';
 import { alertPlugin } from './alertPlugin';
 import { codeBlockPlugin, highlightPlugin } from './codeBlockPlugin';
 import {
@@ -44,7 +49,7 @@ import {
 } from './toolbarPlugin';
 
 declare function acquireVsCodeApi(): {
-	postMessage(message: unknown): void;
+	postMessage(message: EditorToHostMessage): void;
 	getState(): unknown;
 	setState(state: unknown): void;
 };
@@ -309,7 +314,11 @@ function replaceContent(newMarkdown: string): void {
 
 // Handle messages from the extension host
 window.addEventListener('message', (event) => {
-	const message = event.data;
+	const rawMessage = event.data;
+	if (!isHostToEditorMessage(rawMessage)) {
+		return;
+	}
+	const message: HostToEditorMessage = rawMessage;
 	switch (message.type) {
 		case 'init': {
 			const container = document.getElementById('editor');
@@ -341,7 +350,7 @@ window.addEventListener('message', (event) => {
 			if (!editor) break;
 			editor.action((ctx) => {
 				const view = ctx.get(editorViewCtx);
-				const pos = message.pos as number;
+				const { pos } = message;
 				const { doc } = view.state;
 				if (pos < 0 || pos >= doc.content.size) return;
 				const selection = TextSelection.near(doc.resolve(pos));

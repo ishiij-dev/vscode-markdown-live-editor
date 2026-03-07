@@ -1,11 +1,5 @@
 import * as vscode from 'vscode';
-
-/** Heading data sent from the webview */
-export interface HeadingItem {
-	text: string;
-	level: number;
-	pos: number;
-}
+import type { HeadingItem } from '../protocol/messages';
 
 class HeadingTreeItem extends vscode.TreeItem {
 	constructor(
