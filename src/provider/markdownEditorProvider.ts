@@ -1,10 +1,15 @@
 import * as vscode from 'vscode';
 import {
-	type HeadingItem,
 	type HostToEditorMessage,
 	isEditorToHostMessage,
 } from '../protocol/messages';
 import type { OutlineProvider } from './outlineProvider';
+import {
+	consumeDocumentChange,
+	initialWebviewSyncState,
+	markPendingEcho,
+	type WebviewSyncState,
+} from './syncGuard';
 
 export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider {
 	public static readonly viewType = 'markdownLiveEditor.editor';
@@ -84,11 +89,9 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider {
 			true,
 		);
 
-		// Track the last content received from the webview to prevent
-		// echo: when onDidChangeTextDocument fires for our own edit,
-		// we compare against this value instead of relying solely on
-		// pendingEdits (which can race with microtask timing).
-		let lastWebviewContent = '';
+		// Prevent one echo-back round-trip for edits originating from webview.
+		// The state is consumed on the next matching document change.
+		let syncState: WebviewSyncState = initialWebviewSyncState;
 
 		// Handle all messages from the webview in a single listener
 		const onDidReceiveMessage = webviewPanel.webview.onDidReceiveMessage(
@@ -110,11 +113,11 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider {
 						break;
 					}
 					case 'update': {
-						const text = message.body as string;
+						const text = message.body;
 						if (text === document.getText()) {
 							return;
 						}
-						lastWebviewContent = text;
+						syncState = markPendingEcho(text);
 						const edit = new vscode.WorkspaceEdit();
 						edit.replace(
 							document.uri,
@@ -126,8 +129,7 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider {
 					}
 					case 'headings': {
 						if (this.activeWebviewPanel === webviewPanel) {
-							const items = message.items as HeadingItem[];
-							this.outlineProvider.updateHeadings(items);
+							this.outlineProvider.updateHeadings(message.items);
 						}
 						break;
 					}
@@ -148,15 +150,16 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider {
 		);
 
 		// Sync external changes (e.g. from text editor) to webview.
-		// Skip if the content matches what the webview last sent us
-		// (i.e. the change originated from the webview itself).
+		// Skip one matching echo-back change after applying webview updates.
 		const onDidChangeTextDocument = vscode.workspace.onDidChangeTextDocument(
 			(e) => {
 				if (e.document.uri.toString() !== document.uri.toString()) {
 					return;
 				}
 				const currentText = document.getText();
-				if (currentText === lastWebviewContent) {
+				const { skip, next } = consumeDocumentChange(syncState, currentText);
+				syncState = next;
+				if (skip) {
 					return;
 				}
 				const updateMessage: HostToEditorMessage = {
