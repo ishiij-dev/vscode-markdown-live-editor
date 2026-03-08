@@ -28,6 +28,6 @@ export function consumeDocumentChange(
 
 	return {
 		skip: false,
-		next: initialWebviewSyncState,
+		next: state,
 	};
 }

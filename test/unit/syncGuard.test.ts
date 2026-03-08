@@ -21,6 +21,17 @@ describe('syncGuard', () => {
 		const state = markPendingEcho('A');
 		const result = consumeDocumentChange(state, 'B');
 		assert.equal(result.skip, false);
+		assert.equal(result.next.pendingEchoContent, 'A');
+	});
+
+	it('keeps pending on non-match and skips on subsequent match', () => {
+		let state = markPendingEcho('A');
+		const nonMatch = consumeDocumentChange(state, 'B');
+		assert.equal(nonMatch.skip, false);
+		state = nonMatch.next;
+
+		const match = consumeDocumentChange(state, 'A');
+		assert.equal(match.skip, true);
 	});
 
 	it('allows external change back to old text after pending is consumed', () => {
