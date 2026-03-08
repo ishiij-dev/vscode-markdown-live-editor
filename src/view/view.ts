@@ -18,6 +18,7 @@ import {
 	isHostToEditorMessage,
 } from '../protocol/messages';
 import { alertPlugin } from './alertPlugin';
+import { autoPairPlugin } from './autoPairPlugin';
 import { codeBlockPlugin, highlightPlugin } from './codeBlockPlugin';
 import {
 	cleanupTableBr,
@@ -249,6 +250,7 @@ async function createEditor(
 		.use(headingExtractPlugin)
 		.use(wordCountPlugin)
 		.use(codeBlockPlugin)
+		.use(autoPairPlugin)
 		.use(highlightPlugin)
 		.use(alertPlugin)
 		.use(frontmatterViewPlugin)
