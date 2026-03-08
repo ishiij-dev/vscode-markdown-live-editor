@@ -62,15 +62,12 @@ function applyAutoPair(
 	const tr = state.tr;
 
 	if (from !== to) {
-		const selected = state.doc.textBetween(from, to, '\n');
-		const wrapped = `${open}${selected}${close}`;
-		tr.insertText(wrapped, from, to);
+		// Insert closing first so the start position remains stable.
+		// This preserves marks/nodes inside the selected range.
+		tr.insertText(close, to, to);
+		tr.insertText(open, from, from);
 		tr.setSelection(
-			TextSelection.create(
-				tr.doc,
-				from + open.length,
-				from + open.length + selected.length,
-			),
+			TextSelection.create(tr.doc, from + open.length, to + open.length),
 		);
 		dispatch(tr.scrollIntoView());
 		return true;
