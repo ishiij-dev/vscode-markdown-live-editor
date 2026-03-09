@@ -258,6 +258,83 @@ body {
 	background-color: var(--vscode-list-hoverBackground, #2a2d2e);
 }
 
+/* ============================================
+   Search panel + highlights
+   ============================================ */
+
+.search-panel {
+	display: none;
+	position: fixed;
+	top: 12px;
+	right: 20px;
+	z-index: 1100;
+	align-items: center;
+	gap: 6px;
+	padding: 6px;
+	background-color: var(--vscode-editorWidget-background, #252526);
+	border: 1px solid var(--vscode-widget-border, #454545);
+	border-radius: 6px;
+	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+}
+
+.search-panel[data-show="true"] {
+	display: flex;
+}
+
+.search-input {
+	width: 190px;
+	height: 24px;
+	padding: 2px 8px;
+	border: 1px solid var(--vscode-input-border, #3c3c3c);
+	border-radius: 4px;
+	background-color: var(--vscode-input-background, #3c3c3c);
+	color: var(--vscode-input-foreground, #cccccc);
+	font-size: 12px;
+}
+
+.search-input:focus {
+	outline: 1px solid var(--vscode-focusBorder, #007fd4);
+}
+
+.search-input[data-no-results="true"] {
+	border-color: var(--vscode-inputValidation-errorBorder, #be1100);
+	background-color: color-mix(
+		in srgb,
+		var(--vscode-input-background, #3c3c3c) 88%,
+		#be1100
+	);
+}
+
+.search-count {
+	min-width: 44px;
+	text-align: right;
+	font-size: 12px;
+	color: var(--vscode-descriptionForeground, #999999);
+}
+
+.search-btn {
+	height: 24px;
+	min-width: 24px;
+	border: none;
+	border-radius: 4px;
+	cursor: pointer;
+	background: transparent;
+	color: var(--vscode-foreground, #cccccc);
+}
+
+.search-btn:hover {
+	background-color: var(--vscode-list-hoverBackground, #2a2d2e);
+}
+
+.search-match {
+	background-color: rgba(255, 215, 0, 0.32);
+	border-radius: 2px;
+}
+
+.search-match-active {
+	background-color: rgba(255, 140, 0, 0.55);
+}
+
 /* Custom link edit tooltip (manual positioning, always above) */
 .milkdown-link-edit {
 	display: none;

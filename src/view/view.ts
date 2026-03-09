@@ -39,6 +39,14 @@ import {
 	mathViewPlugin,
 	remarkMathPlugin,
 } from './katexPlugin';
+import {
+	clearSearchAction,
+	getSearchState,
+	nextSearchMatchAction,
+	prevSearchMatchAction,
+	searchPlugin,
+	setSearchQueryAction,
+} from './searchPlugin';
 import { configureSlash, slash, slashKeyboardPlugin } from './slashPlugin';
 import { configureTableBlock, tableBlock } from './tableBlockPlugin';
 import {
@@ -84,6 +92,7 @@ let isInitializing = false;
 // Batches rapid keystrokes into a single postMessage call.
 let updateTimer: ReturnType<typeof setTimeout> | null = null;
 const UPDATE_DELAY_MS = 300;
+let disposeSearchUi: (() => void) | null = null;
 
 // ProseMirror plugin that detects doc changes and syncs to the extension host.
 // Unlike Milkdown's markdownUpdated listener, this does NOT serialize the
@@ -224,6 +233,190 @@ const wordCountPlugin = $prose((_ctx) => {
 	});
 });
 
+function setupSearchUi(instance: Editor): void {
+	if (disposeSearchUi) {
+		disposeSearchUi();
+		disposeSearchUi = null;
+	}
+
+	instance.action((ctx) => {
+		const view = ctx.get(editorViewCtx);
+		const panel = document.createElement('div');
+		panel.className = 'search-panel';
+		panel.setAttribute('data-show', 'false');
+		panel.innerHTML = `
+			<input class="search-input" type="text" placeholder="Find" />
+			<span class="search-count">0/0</span>
+			<button class="search-btn search-prev" title="Previous">↑</button>
+			<button class="search-btn search-next" title="Next">↓</button>
+			<button class="search-btn search-close" title="Close">✕</button>
+		`;
+		document.body.appendChild(panel);
+
+		const input = panel.querySelector('.search-input') as HTMLInputElement;
+		const count = panel.querySelector('.search-count') as HTMLSpanElement;
+		const nextBtn = panel.querySelector('.search-next') as HTMLButtonElement;
+		const prevBtn = panel.querySelector('.search-prev') as HTMLButtonElement;
+		const closeBtn = panel.querySelector('.search-close') as HTMLButtonElement;
+
+		function updateCount(): void {
+			const state = getSearchState(view);
+			const noResults = state.query.length > 0 && state.matches.length === 0;
+			input.setAttribute('data-no-results', noResults ? 'true' : 'false');
+			if (!state.query || state.matches.length === 0) {
+				count.textContent = '0/0';
+				return;
+			}
+			count.textContent = `${state.activeIndex + 1}/${state.matches.length}`;
+		}
+
+		function revealActiveMatch(): void {
+			const state = getSearchState(view);
+			if (state.activeIndex < 0 || state.activeIndex >= state.matches.length) {
+				return;
+			}
+			const match = state.matches[state.activeIndex];
+			const { from, to } = view.state.selection;
+			if (from === match.from && to === match.to) {
+				return;
+			}
+			view.dispatch(
+				view.state.tr
+					.setSelection(
+						TextSelection.create(view.state.doc, match.from, match.to),
+					)
+					.scrollIntoView(),
+			);
+			// Keep the active match around the center of the viewport for
+			// smoother keyboard navigation across many results.
+			requestAnimationFrame(() => {
+				const dom = view.nodeDOM(match.from);
+				if (dom instanceof HTMLElement) {
+					dom.scrollIntoView({ block: 'center', behavior: 'smooth' });
+					return;
+				}
+				if (dom instanceof Text && dom.parentElement) {
+					dom.parentElement.scrollIntoView({
+						block: 'center',
+						behavior: 'smooth',
+					});
+				}
+			});
+		}
+
+		function openSearchBar(): void {
+			panel.setAttribute('data-show', 'true');
+			const selected = view.state.doc.textBetween(
+				view.state.selection.from,
+				view.state.selection.to,
+				'\n',
+			);
+			if (selected.trim().length > 0) {
+				input.value = selected;
+				setSearchQueryAction(view, selected);
+				revealActiveMatch();
+				updateCount();
+			} else {
+				updateCount();
+			}
+			input.focus();
+			input.select();
+		}
+
+		function closeSearchBar(): void {
+			panel.setAttribute('data-show', 'false');
+			input.value = '';
+			clearSearchAction(view);
+			updateCount();
+			view.focus();
+		}
+
+		function onInputChange(): void {
+			setSearchQueryAction(view, input.value);
+			revealActiveMatch();
+			updateCount();
+		}
+
+		function onNext(): void {
+			nextSearchMatchAction(view);
+			revealActiveMatch();
+			updateCount();
+		}
+
+		function onPrev(): void {
+			prevSearchMatchAction(view);
+			revealActiveMatch();
+			updateCount();
+		}
+
+		function onKeyDown(event: KeyboardEvent): void {
+			const key = event.key.toLowerCase();
+			if ((event.metaKey || event.ctrlKey) && key === 'f') {
+				event.preventDefault();
+				openSearchBar();
+				return;
+			}
+			if (event.key === 'F3') {
+				event.preventDefault();
+				if (event.shiftKey) {
+					onPrev();
+				} else {
+					onNext();
+				}
+				return;
+			}
+			if (
+				(event.metaKey || event.ctrlKey) &&
+				key === 'g' &&
+				panel.getAttribute('data-show') === 'true'
+			) {
+				event.preventDefault();
+				if (event.shiftKey) {
+					onPrev();
+				} else {
+					onNext();
+				}
+				return;
+			}
+			if (
+				event.key === 'Escape' &&
+				panel.getAttribute('data-show') === 'true'
+			) {
+				event.preventDefault();
+				closeSearchBar();
+				return;
+			}
+		}
+
+		input.addEventListener('input', onInputChange);
+		input.addEventListener('keydown', (event) => {
+			if (event.key === 'Enter') {
+				event.preventDefault();
+				if (event.shiftKey) {
+					onPrev();
+				} else {
+					onNext();
+				}
+			}
+			if (event.key === 'Escape') {
+				event.preventDefault();
+				closeSearchBar();
+			}
+		});
+		nextBtn.addEventListener('click', onNext);
+		prevBtn.addEventListener('click', onPrev);
+		closeBtn.addEventListener('click', closeSearchBar);
+		window.addEventListener('keydown', onKeyDown);
+
+		updateCount();
+
+		disposeSearchUi = () => {
+			window.removeEventListener('keydown', onKeyDown);
+			panel.remove();
+		};
+	});
+}
+
 async function createEditor(
 	container: HTMLElement,
 	markdown: string,
@@ -248,6 +441,7 @@ async function createEditor(
 		.use(syncPlugin)
 		.use(headingExtractPlugin)
 		.use(wordCountPlugin)
+		.use(searchPlugin)
 		.use(codeBlockPlugin)
 		.use(highlightPlugin)
 		.use(alertPlugin)
@@ -271,6 +465,7 @@ async function createEditor(
 			serializer(ctx.get(editorStateCtx).doc),
 		);
 	});
+	setupSearchUi(instance);
 
 	isInitializing = false;
 	return instance;
