@@ -24,6 +24,7 @@ ext install jishii1204.markdown-live-editor
 - **GFM support** — Tables, task lists, strikethrough, footnotes
 - **Selection toolbar** — Select text to show Bold, Italic, Strikethrough, Code, and Link buttons
 - **Link tooltip** — Hover over links to preview URL with edit/delete actions
+- **In-editor Find** — Search inside the webview editor with match highlights and keyboard navigation
 - **Outline panel** — Heading hierarchy in the Explorer sidebar with click-to-scroll navigation
 - **Syntax highlighting** — Code blocks with language-aware highlighting via [highlight.js](https://highlightjs.org/)
 - **Mermaid diagrams** — Live preview of `mermaid` code blocks
@@ -51,6 +52,17 @@ ext install jishii1204.markdown-live-editor
 | Setting | Description | Default |
 |---------|-------------|---------|
 | `markdownLiveEditor.customCss` | Custom CSS to inject into the editor | `""` |
+
+### In-editor Find Shortcuts
+
+Because the editor runs inside a webview, it uses its own Find panel.
+
+| Action | Shortcut |
+|--------|----------|
+| Open Find | `Ctrl+F` (Mac: `Cmd+F`) |
+| Next match | `Enter`, `F3`, `Ctrl+G` (Mac: `Cmd+G`) |
+| Previous match | `Shift+Enter`, `Shift+F3`, `Shift+Ctrl+G` (Mac: `Shift+Cmd+G`) |
+| Close Find | `Esc` |
 
 ## Supported Markdown Features
 
