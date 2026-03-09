@@ -1,6 +1,11 @@
 import type { Ctx } from '@milkdown/ctx';
 import type { Node as ProseMirrorNode } from '@milkdown/prose/model';
-import { Plugin, PluginKey, type Transaction } from '@milkdown/prose/state';
+import {
+	type EditorState,
+	Plugin,
+	PluginKey,
+	type Transaction,
+} from '@milkdown/prose/state';
 import {
 	Decoration,
 	DecorationSet,
@@ -19,6 +24,7 @@ import {
 } from './searchState';
 
 export const searchPluginKey = new PluginKey<SearchState>('search-plugin');
+let searchStateChangeListener: ((state: SearchState) => void) | null = null;
 
 type SearchAction =
 	| { type: 'setQuery'; query: string }
@@ -107,8 +113,31 @@ export const searchPlugin = $prose((_ctx: Ctx) => {
 				return createDecorations(state.doc, current);
 			},
 		},
+		view(_view) {
+			return {
+				update(nextView: EditorView, prevState: EditorState) {
+					const prev = searchPluginKey.getState(prevState) ?? emptySearchState;
+					const current =
+						searchPluginKey.getState(nextView.state) ?? emptySearchState;
+					const changed =
+						prev.query !== current.query ||
+						prev.activeIndex !== current.activeIndex ||
+						prev.matches.length !== current.matches.length;
+					if (changed && searchStateChangeListener) {
+						searchStateChangeListener(current);
+					}
+				},
+				destroy() {},
+			};
+		},
 	});
 });
+
+export function setSearchStateChangeListener(
+	listener: ((state: SearchState) => void) | null,
+): void {
+	searchStateChangeListener = listener;
+}
 
 export function getSearchState(view: EditorView): SearchState {
 	return searchPluginKey.getState(view.state) ?? emptySearchState;

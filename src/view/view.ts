@@ -47,6 +47,7 @@ import {
 	prevSearchMatchAction,
 	searchPlugin,
 	setSearchQueryAction,
+	setSearchStateChangeListener,
 } from './searchPlugin';
 import { configureSlash, slash, slashKeyboardPlugin } from './slashPlugin';
 import { configureTableBlock, tableBlock } from './tableBlockPlugin';
@@ -410,9 +411,15 @@ function setupSearchUi(instance: Editor): void {
 		window.addEventListener('keydown', onKeyDown);
 
 		updateCount();
+		setSearchStateChangeListener(() => {
+			if (panel.getAttribute('data-show') === 'true') {
+				updateCount();
+			}
+		});
 
 		disposeSearchUi = () => {
 			window.removeEventListener('keydown', onKeyDown);
+			setSearchStateChangeListener(null);
 			panel.remove();
 		};
 	});
