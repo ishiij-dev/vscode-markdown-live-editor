@@ -2,6 +2,21 @@
 
 All notable changes to Markdown Live Editor will be documented in this file.
 
+## [0.3.0] - 2026-03-09
+
+### Added
+
+- In-editor Find panel in the webview (`Ctrl/Cmd+F`)
+- Match navigation with `Enter`, `F3`, `Ctrl/Cmd+G`, and reverse navigation with `Shift` variants
+- Search result highlights with active match styling
+- No-results visual feedback in the search input
+
+### Changed
+
+- Refactor search logic into modular search state utilities for better testability
+- Keep find panel count and no-results state synchronized on document updates
+- Improve active match reveal behavior with centered smooth scrolling
+
 ## [0.2.1] - 2026-03-02
 
 ### Changed
