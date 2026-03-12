@@ -32,6 +32,23 @@ npm run lint        # Check
 npm run lint:fix    # Auto-fix
 ```
 
+## PR Labels and Quality Workflow
+
+To keep quality work discoverable and triage-friendly, apply labels on every PR:
+
+- Add `quality` for reliability/process/test/maintainability improvements
+- Add one `area:*` label that best matches the primary change area
+  - Examples: `area:test`, `area:sync`, `area:search`, `area:input`, `area:editor-core`
+
+For quality-related PRs, include these details in the PR description:
+
+- Reproduction steps (if fixing a behavior/regression)
+- Expected result
+- Impact scope
+- Rollback condition
+
+This repository tracks release-freeze readiness using issue metrics (see #66/#73), so label consistency is part of the operating rule.
+
 ## Tech Stack
 
 - TypeScript
