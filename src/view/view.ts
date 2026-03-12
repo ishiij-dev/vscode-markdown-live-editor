@@ -246,19 +246,40 @@ function setupSearchUi(instance: Editor): void {
 		const panel = document.createElement('div');
 		panel.className = 'search-panel';
 		panel.setAttribute('data-show', 'false');
+		panel.setAttribute('data-replace', 'false');
 		panel.innerHTML = `
-			<input class="search-input" type="text" placeholder="Find" />
-			<span class="search-count">0/0</span>
-			<button class="search-btn search-prev" title="Previous">↑</button>
-			<button class="search-btn search-next" title="Next">↓</button>
-			<button class="search-btn search-close" title="Close">✕</button>
+			<div class="search-row">
+				<input class="search-input" type="text" placeholder="Find" />
+				<span class="search-count">0/0</span>
+				<button class="search-btn search-prev" title="Previous">↑</button>
+				<button class="search-btn search-next" title="Next">↓</button>
+				<button class="search-btn search-toggle-replace" title="Toggle Replace">↧</button>
+				<button class="search-btn search-close" title="Close">✕</button>
+			</div>
+			<div class="replace-row">
+				<input class="search-input replace-input" type="text" placeholder="Replace" />
+				<button class="search-btn search-replace" title="Replace">Replace</button>
+				<button class="search-btn search-replace-all" title="Replace All">All</button>
+			</div>
 		`;
 		document.body.appendChild(panel);
 
 		const input = panel.querySelector('.search-input') as HTMLInputElement;
+		const replaceInput = panel.querySelector(
+			'.replace-input',
+		) as HTMLInputElement;
 		const count = panel.querySelector('.search-count') as HTMLSpanElement;
 		const nextBtn = panel.querySelector('.search-next') as HTMLButtonElement;
 		const prevBtn = panel.querySelector('.search-prev') as HTMLButtonElement;
+		const toggleReplaceBtn = panel.querySelector(
+			'.search-toggle-replace',
+		) as HTMLButtonElement;
+		const replaceBtn = panel.querySelector(
+			'.search-replace',
+		) as HTMLButtonElement;
+		const replaceAllBtn = panel.querySelector(
+			'.search-replace-all',
+		) as HTMLButtonElement;
 		const closeBtn = panel.querySelector('.search-close') as HTMLButtonElement;
 
 		function updateCount(): void {
@@ -325,12 +346,32 @@ function setupSearchUi(instance: Editor): void {
 			input.select();
 		}
 
+		function openReplaceBar(): void {
+			openSearchBar();
+			panel.setAttribute('data-replace', 'true');
+			replaceInput.focus();
+			replaceInput.select();
+		}
+
 		function closeSearchBar(): void {
 			panel.setAttribute('data-show', 'false');
+			panel.setAttribute('data-replace', 'false');
 			input.value = '';
+			replaceInput.value = '';
 			clearSearchAction(view);
 			updateCount();
 			view.focus();
+		}
+
+		function toggleReplaceBar(): void {
+			const showReplace = panel.getAttribute('data-replace') === 'true';
+			panel.setAttribute('data-replace', showReplace ? 'false' : 'true');
+			if (showReplace) {
+				input.focus();
+				return;
+			}
+			replaceInput.focus();
+			replaceInput.select();
 		}
 
 		function onInputChange(): void {
@@ -347,6 +388,35 @@ function setupSearchUi(instance: Editor): void {
 
 		function onPrev(): void {
 			prevSearchMatchAction(view);
+			revealActiveMatch();
+			updateCount();
+		}
+
+		function onReplace(): void {
+			const state = getSearchState(view);
+			if (state.matches.length === 0) {
+				return;
+			}
+			const activeIndex = Math.max(0, state.activeIndex);
+			const match = state.matches[activeIndex];
+			view.dispatch(
+				view.state.tr.insertText(replaceInput.value, match.from, match.to),
+			);
+			revealActiveMatch();
+			updateCount();
+		}
+
+		function onReplaceAll(): void {
+			const state = getSearchState(view);
+			if (state.matches.length === 0) {
+				return;
+			}
+			let tr = view.state.tr;
+			for (let i = state.matches.length - 1; i >= 0; i--) {
+				const match = state.matches[i];
+				tr = tr.insertText(replaceInput.value, match.from, match.to);
+			}
+			view.dispatch(tr);
 			revealActiveMatch();
 			updateCount();
 		}
@@ -380,6 +450,15 @@ function setupSearchUi(instance: Editor): void {
 				}
 				return;
 			}
+			if ((event.metaKey || event.ctrlKey) && key === 'h') {
+				event.preventDefault();
+				if (panel.getAttribute('data-show') === 'true') {
+					toggleReplaceBar();
+				} else {
+					openReplaceBar();
+				}
+				return;
+			}
 			if (
 				event.key === 'Escape' &&
 				panel.getAttribute('data-show') === 'true'
@@ -407,7 +486,20 @@ function setupSearchUi(instance: Editor): void {
 		});
 		nextBtn.addEventListener('click', onNext);
 		prevBtn.addEventListener('click', onPrev);
+		toggleReplaceBtn.addEventListener('click', toggleReplaceBar);
+		replaceBtn.addEventListener('click', onReplace);
+		replaceAllBtn.addEventListener('click', onReplaceAll);
 		closeBtn.addEventListener('click', closeSearchBar);
+		replaceInput.addEventListener('keydown', (event) => {
+			if (event.key === 'Enter') {
+				event.preventDefault();
+				onReplace();
+			}
+			if (event.key === 'Escape') {
+				event.preventDefault();
+				closeSearchBar();
+			}
+		});
 		window.addEventListener('keydown', onKeyDown);
 
 		updateCount();

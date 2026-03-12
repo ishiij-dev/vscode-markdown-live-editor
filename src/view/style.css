@@ -268,8 +268,9 @@ body {
 	top: 12px;
 	right: 20px;
 	z-index: 1100;
-	align-items: center;
-	gap: 6px;
+	flex-direction: column;
+	align-items: stretch;
+	gap: 4px;
 	padding: 6px;
 	background-color: var(--vscode-editorWidget-background, #252526);
 	border: 1px solid var(--vscode-widget-border, #454545);
@@ -278,6 +279,22 @@ body {
 }
 
 .search-panel[data-show="true"] {
+	display: flex;
+}
+
+.search-row {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+}
+
+.replace-row {
+	display: none;
+	align-items: center;
+	gap: 6px;
+}
+
+.search-panel[data-replace="true"] .replace-row {
 	display: flex;
 }
 
@@ -290,6 +307,10 @@ body {
 	background-color: var(--vscode-input-background, #3c3c3c);
 	color: var(--vscode-input-foreground, #cccccc);
 	font-size: 12px;
+}
+
+.replace-input {
+	width: 140px;
 }
 
 .search-input:focus {
@@ -314,12 +335,13 @@ body {
 
 .search-btn {
 	height: 24px;
-	min-width: 24px;
+	min-width: 28px;
 	border: none;
 	border-radius: 4px;
 	cursor: pointer;
 	background: transparent;
 	color: var(--vscode-foreground, #cccccc);
+	padding: 0 8px;
 }
 
 .search-btn:hover {
