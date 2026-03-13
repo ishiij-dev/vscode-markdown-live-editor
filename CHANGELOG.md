@@ -2,6 +2,20 @@
 
 All notable changes to Markdown Live Editor will be documented in this file.
 
+## [0.3.1] - 2026-03-13
+
+### Added
+
+- In-editor Replace actions in the search panel:
+  - Replace current match
+  - Replace all matches
+- `Ctrl/Cmd+H` shortcut to open/toggle Replace row
+
+### Changed
+
+- Updated README with search/replace shortcut guidance
+- Improved PR/process documentation for quality tracking
+
 ## [0.3.0] - 2026-03-09
 
 ### Added
