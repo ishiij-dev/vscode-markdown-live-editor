@@ -2,6 +2,24 @@
 
 All notable changes to Markdown Live Editor will be documented in this file.
 
+## [0.4.0] - 2026-03-14
+
+### Added
+
+- Styled HTML export for the current editor view
+- Export actions in the in-editor panel:
+  - Copy HTML to clipboard
+  - Export HTML file
+- Command Palette entry: `Markdown Live Editor: Export HTML`
+
+### Changed
+
+- Added README usage section for HTML export
+
+### Fixed
+
+- Sanitized exported HTML snapshots by removing executable tags and dangerous attributes/URLs
+
 ## [0.3.1] - 2026-03-13
 
 ### Added
