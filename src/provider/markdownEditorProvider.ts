@@ -3,8 +3,8 @@ import {
 	type ExportHtmlMessage,
 	type ExportMode,
 	type HostToEditorMessage,
-	type RequestExportMessage,
 	isEditorToHostMessage,
+	type RequestExportMessage,
 } from '../protocol/messages';
 import type { OutlineProvider } from './outlineProvider';
 import {
@@ -57,9 +57,8 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider {
 		);
 
 		disposables.push(
-			vscode.commands.registerCommand(
-				'markdownLiveEditor.exportHtml',
-				() => provider.showExportOptions(),
+			vscode.commands.registerCommand('markdownLiveEditor.exportHtml', () =>
+				provider.showExportOptions(),
 			),
 		);
 
@@ -167,11 +166,7 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider {
 						const request = message as RequestExportMessage;
 						const style = await this.getStyleSheet();
 						const customStyle = this.getCustomStyle();
-						this.postExportRequest(
-							request.mode,
-							style,
-							customStyle,
-						);
+						this.postExportRequest(request.mode, style, customStyle);
 						break;
 					}
 					case 'exportHtml': {
@@ -245,8 +240,6 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider {
 		});
 	}
 
-
-
 	private async getStyleSheet(): Promise<string> {
 		if (this.styleCache) {
 			return this.styleCache;
@@ -292,11 +285,7 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider {
 			this.getStyleSheet(),
 			this.getCustomStyle(),
 		]);
-		this.postExportRequest(
-			selection.mode,
-			style,
-			customStyle,
-		);
+		this.postExportRequest(selection.mode, style, customStyle);
 	}
 
 	private postExportRequest(
@@ -325,7 +314,10 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider {
 		if (!target) {
 			return;
 		}
-		await vscode.workspace.fs.writeFile(target, Buffer.from(message.html, 'utf8'));
+		await vscode.workspace.fs.writeFile(
+			target,
+			Buffer.from(message.html, 'utf8'),
+		);
 		vscode.window.showInformationMessage(`Exported HTML to ${target.fsPath}`);
 	}
 	private getHtmlForWebview(webview: vscode.Webview): string {

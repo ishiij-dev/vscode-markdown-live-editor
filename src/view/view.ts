@@ -16,9 +16,9 @@ import {
 	type EditorToHostMessage,
 	type ExportMode,
 	type HostToEditorMessage,
+	isHostToEditorMessage,
 	type RequestExportHtmlMessage,
 	type RequestExportMessage,
-	isHostToEditorMessage,
 } from '../protocol/messages';
 import { alertPlugin } from './alertPlugin';
 import { autoPairPlugin } from './autoPairPlugin';
@@ -574,9 +574,7 @@ function setupSearchUi(instance: Editor): void {
 		exportClipboardBtn.addEventListener('click', () =>
 			sendExportRequest('clipboard'),
 		);
-		exportFileBtn.addEventListener('click', () =>
-			sendExportRequest('file'),
-		);
+		exportFileBtn.addEventListener('click', () => sendExportRequest('file'));
 		window.addEventListener('keydown', onKeyDown);
 
 		updateCount();
@@ -720,7 +718,7 @@ function buildExportHtml(style: string, customStyle: string): string {
 	wrapper.innerHTML = editorElement?.innerHTML ?? '';
 	exportDoc.body.appendChild(wrapper);
 
-	return '<!DOCTYPE html>\n' + exportDoc.documentElement.outerHTML;
+	return `<!DOCTYPE html>\n${exportDoc.documentElement.outerHTML}`;
 }
 
 // Handle messages from the extension host
@@ -796,7 +794,7 @@ window.addEventListener('message', (event) => {
 		}
 		case 'requestExportHtml': {
 			const request = message as RequestExportHtmlMessage;
-		const html = buildExportHtml(request.style, request.customStyle);
+			const html = buildExportHtml(request.style, request.customStyle);
 			vscode.postMessage({
 				type: 'exportHtml',
 				html,
