@@ -716,9 +716,56 @@ function buildExportHtml(style: string, customStyle: string): string {
 	const wrapper = exportDoc.createElement('div');
 	wrapper.className = 'markdown-live-export';
 	wrapper.innerHTML = editorElement?.innerHTML ?? '';
+	sanitizeExportContainer(wrapper);
 	exportDoc.body.appendChild(wrapper);
 
 	return `<!DOCTYPE html>\n${exportDoc.documentElement.outerHTML}`;
+}
+
+function sanitizeExportContainer(root: HTMLElement): void {
+	// Strip executable elements from exported snapshots.
+	root
+		.querySelectorAll(
+			'script, iframe, object, embed, link[rel="import"], base, meta[http-equiv="refresh"]',
+		)
+		.forEach((node) => {
+			node.remove();
+		});
+
+	root.querySelectorAll('*').forEach((element) => {
+		for (const attribute of Array.from(element.attributes)) {
+			const attrName = attribute.name.toLowerCase();
+			const attrValue = attribute.value;
+
+			if (attrName.startsWith('on')) {
+				element.removeAttribute(attribute.name);
+				continue;
+			}
+
+			if (attrName === 'srcdoc') {
+				element.removeAttribute(attribute.name);
+				continue;
+			}
+
+			if (isJavascriptUrlAttribute(attrName, attrValue)) {
+				element.removeAttribute(attribute.name);
+			}
+		}
+	});
+}
+
+function isJavascriptUrlAttribute(name: string, value: string): boolean {
+	if (
+		name !== 'href' &&
+		name !== 'src' &&
+		name !== 'xlink:href' &&
+		name !== 'formaction'
+	) {
+		return false;
+	}
+
+	const normalized = value.toLowerCase().replace(/\s+/g, '');
+	return normalized.startsWith('javascript:');
 }
 
 // Handle messages from the extension host
