@@ -267,16 +267,16 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider {
 		};
 		const choices: ExportChoice[] = [
 			{
-				label: 'Copy HTML to clipboard',
+				label: 'Copy styled HTML to clipboard',
 				mode: 'clipboard',
 			},
 			{
-				label: 'Export HTML file',
+				label: 'Export styled HTML file',
 				mode: 'file',
 			},
 		];
 		const selection = await vscode.window.showQuickPick(choices, {
-			placeHolder: 'Export the current document as HTML',
+			placeHolder: 'Export the current view as styled HTML',
 		});
 		if (!selection) {
 			return;
@@ -304,12 +304,12 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider {
 	private async handleExportHtml(message: ExportHtmlMessage): Promise<void> {
 		if (message.mode === 'clipboard') {
 			await vscode.env.clipboard.writeText(message.html);
-			vscode.window.showInformationMessage('Copied HTML to clipboard');
+			vscode.window.showInformationMessage('Copied styled HTML to clipboard');
 			return;
 		}
 		const target = await vscode.window.showSaveDialog({
 			filters: { HTML: ['html'] },
-			title: 'Export Markdown Live Editor as HTML',
+			title: 'Export styled HTML from Markdown Live Editor',
 		});
 		if (!target) {
 			return;
@@ -318,7 +318,9 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider {
 			target,
 			Buffer.from(message.html, 'utf8'),
 		);
-		vscode.window.showInformationMessage(`Exported HTML to ${target.fsPath}`);
+		vscode.window.showInformationMessage(
+			`Exported styled HTML to ${target.fsPath}`,
+		);
 	}
 	private getHtmlForWebview(webview: vscode.Webview): string {
 		const scriptUri = webview.asWebviewUri(

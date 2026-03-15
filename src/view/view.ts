@@ -260,8 +260,8 @@ function setupSearchUi(instance: Editor): void {
 				<button class="search-btn search-toggle-replace" title="Toggle Replace">↧</button>
 				<button
 					class="search-btn search-toggle-export"
-					title="Export current view"
-					aria-label="Export current view"
+					title="Export current view as styled HTML"
+					aria-label="Export current view as styled HTML"
 				>
 					⤴
 				</button>
@@ -277,15 +277,15 @@ function setupSearchUi(instance: Editor): void {
 				<div class="export-actions">
 					<button
 						class="search-btn search-export-clipboard"
-						title="Copy HTML to clipboard"
-						aria-label="Copy HTML to clipboard"
+						title="Copy styled HTML to clipboard"
+						aria-label="Copy styled HTML to clipboard"
 					>
 						Copy
 					</button>
 					<button
 						class="search-btn search-export-file"
-						title="Export HTML file"
-						aria-label="Export HTML file"
+						title="Export styled HTML file"
+						aria-label="Export styled HTML file"
 					>
 						Export
 					</button>

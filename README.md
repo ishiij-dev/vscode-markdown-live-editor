@@ -53,11 +53,11 @@ ext install jishii1204.markdown-live-editor
 |---------|-------------|---------|
 | `markdownLiveEditor.customCss` | Custom CSS to inject into the editor | `""` |
 
-### Export HTML
+### Export Styled HTML
 
 You can export the current editor view as styled HTML in two ways:
 
-- Command Palette: `Markdown Live Editor: Export HTML`
+- Command Palette: `Markdown Live Editor: Export Styled HTML`
 - In-editor Find panel: click the export toggle (`⤴`), then choose `Copy` or `Export`
 
 ### In-editor Find Shortcuts

@@ -64,7 +64,7 @@
       },
       {
         "command": "markdownLiveEditor.exportHtml",
-        "title": "Markdown Live Editor: Export HTML",
+        "title": "Markdown Live Editor: Export Styled HTML",
         "category": "Markdown Live Editor"
       },
       {
