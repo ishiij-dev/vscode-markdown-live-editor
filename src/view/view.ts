@@ -36,6 +36,7 @@ import {
 	frontmatterViewPlugin,
 	remarkFrontmatterPlugin,
 } from './frontmatterPlugin';
+import { headingFoldPlugin } from './headingFoldPlugin';
 import { imageViewPlugin, setDocumentDirUri } from './imagePlugin';
 import {
 	mathDisplaySchema,
@@ -617,6 +618,7 @@ async function createEditor(
 		.use(headingExtractPlugin)
 		.use(wordCountPlugin)
 		.use(searchPlugin)
+		.use(headingFoldPlugin)
 		.use(codeBlockPlugin)
 		.use(autoPairPlugin)
 		.use(highlightPlugin)

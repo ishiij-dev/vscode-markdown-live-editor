@@ -385,6 +385,29 @@ body {
 	background-color: rgba(255, 140, 0, 0.55);
 }
 
+.heading-fold-toggle {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 16px;
+	height: 16px;
+	margin-right: 6px;
+	border: 0;
+	background: transparent;
+	color: var(--vscode-descriptionForeground, #999999);
+	cursor: pointer;
+	padding: 0;
+	vertical-align: middle;
+}
+
+.heading-fold-toggle:hover {
+	color: var(--vscode-foreground, #cccccc);
+}
+
+.heading-fold-hidden {
+	display: none;
+}
+
 /* Custom link edit tooltip (manual positioning, always above) */
 .milkdown-link-edit {
 	display: none;
