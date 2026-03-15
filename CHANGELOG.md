@@ -2,6 +2,18 @@
 
 All notable changes to Markdown Live Editor will be documented in this file.
 
+## [0.5.0] - 2026-03-15
+
+### Added
+
+- Heading folding support in the webview editor
+- Fold/expand toggle buttons on headings
+- Keyboard toggle support (`Enter` / `Space`) for heading fold controls
+
+### Changed
+
+- Improved fold toggle target detection to be robust against nested heading toggle DOM structures
+
 ## [0.4.0] - 2026-03-14
 
 ### Added
