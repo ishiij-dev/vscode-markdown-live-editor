@@ -25,6 +25,7 @@ ext install jishii1204.markdown-live-editor
 - **Selection toolbar** — Select text to show Bold, Italic, Strikethrough, Code, and Link buttons
 - **Link tooltip** — Hover over links to preview URL with edit/delete actions
 - **In-editor Find** — Search inside the webview editor with match highlights and keyboard navigation
+- **Heading folding** — Collapse and expand sections by heading in the editor
 - **Outline panel** — Heading hierarchy in the Explorer sidebar with click-to-scroll navigation
 - **Syntax highlighting** — Code blocks with language-aware highlighting via [highlight.js](https://highlightjs.org/)
 - **Mermaid diagrams** — Live preview of `mermaid` code blocks
@@ -59,6 +60,11 @@ You can export the current editor view as styled HTML in two ways:
 
 - Command Palette: `Markdown Live Editor: Export Styled HTML`
 - In-editor Find panel: click the export toggle (`⤴`), then choose `Copy` or `Export`
+
+### Heading Folding
+
+- Click the fold toggle next to a heading to collapse or expand its section
+- Keyboard support: focus the toggle with `Tab`, then press `Enter` or `Space`
 
 ### In-editor Find Shortcuts
 
