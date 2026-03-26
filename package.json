@@ -144,7 +144,7 @@
     "@milkdown/preset-gfm": "^7.18.0",
     "@milkdown/prose": "^7.18.0",
     "highlight.js": "^11.11.1",
-    "katex": "^0.16.38",
+    "katex": "^0.16.40",
     "mermaid": "^11.13.0",
     "remark-emoji": "^5.0.2",
     "remark-frontmatter": "^5.0.0",
