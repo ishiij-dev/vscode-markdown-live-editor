@@ -2,6 +2,13 @@
 
 All notable changes to Markdown Live Editor will be documented in this file.
 
+## [0.5.1] - 2026-03-30
+
+### Changed
+
+- Updated Milkdown packages to `7.20.0` for editor dependency maintenance
+- Updated `typescript` to `6.0.2` in devDependencies
+
 ## [0.5.0] - 2026-03-15
 
 ### Added
