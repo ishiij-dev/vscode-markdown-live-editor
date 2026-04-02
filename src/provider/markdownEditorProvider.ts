@@ -17,6 +17,9 @@ import {
 export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider {
 	public static readonly viewType = 'markdownLiveEditor.editor';
 
+	private static readonly textDecoder = new TextDecoder();
+	private static readonly textEncoder = new TextEncoder();
+
 	private activeWebviewPanel: vscode.WebviewPanel | null = null;
 	private readonly styleUri: vscode.Uri;
 	private styleCache: string | null = null;
@@ -245,7 +248,7 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider {
 			return this.styleCache;
 		}
 		const bytes = await vscode.workspace.fs.readFile(this.styleUri);
-		this.styleCache = Buffer.from(bytes).toString('utf8');
+		this.styleCache = MarkdownEditorProvider.textDecoder.decode(bytes);
 		return this.styleCache;
 	}
 
@@ -316,10 +319,10 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider {
 		}
 		await vscode.workspace.fs.writeFile(
 			target,
-			Buffer.from(message.html, 'utf8'),
+			MarkdownEditorProvider.textEncoder.encode(message.html),
 		);
 		vscode.window.showInformationMessage(
-			`Exported styled HTML to ${target.fsPath}`,
+			`Exported styled HTML to ${target.path || target.toString(true)}`,
 		);
 	}
 	private getHtmlForWebview(webview: vscode.Webview): string {
