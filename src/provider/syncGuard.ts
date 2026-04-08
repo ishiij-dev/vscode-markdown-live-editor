@@ -1,11 +1,13 @@
 export interface WebviewSyncState {
 	pendingEchoContent: string | null;
 	pendingSetAtMs: number | null;
+	pendingExpectedVersion: number | null;
 }
 
 export const initialWebviewSyncState: WebviewSyncState = {
 	pendingEchoContent: null,
 	pendingSetAtMs: null,
+	pendingExpectedVersion: null,
 };
 
 // Pending echo state should be short-lived to avoid suppressing unrelated
@@ -14,20 +16,27 @@ export const PENDING_ECHO_TTL_MS = 1000;
 
 export function markPendingEcho(
 	content: string,
+	expectedVersion: number,
 	nowMs = Date.now(),
 ): WebviewSyncState {
 	return {
 		pendingEchoContent: normalizeEchoContent(content),
 		pendingSetAtMs: nowMs,
+		pendingExpectedVersion: expectedVersion,
 	};
 }
 
 export function consumeDocumentChange(
 	state: WebviewSyncState,
 	currentText: string,
+	currentVersion: number,
 	nowMs = Date.now(),
 ): { skip: boolean; next: WebviewSyncState } {
-	if (state.pendingEchoContent === null || state.pendingSetAtMs === null) {
+	if (
+		state.pendingEchoContent === null ||
+		state.pendingSetAtMs === null ||
+		state.pendingExpectedVersion === null
+	) {
 		return {
 			skip: false,
 			next: initialWebviewSyncState,
@@ -41,6 +50,16 @@ export function consumeDocumentChange(
 		};
 	}
 
+	// Prefer version-based skip: the next version after applyEdit should be the
+	// echo-back change originating from the webview update we just applied.
+	if (currentVersion === state.pendingExpectedVersion) {
+		return {
+			skip: true,
+			next: initialWebviewSyncState,
+		};
+	}
+
+	// Fallback for environments where version sequencing may differ subtly.
 	if (normalizeEchoContent(currentText) === state.pendingEchoContent) {
 		return {
 			skip: true,

@@ -137,7 +137,7 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider {
 						if (text === document.getText()) {
 							return;
 						}
-						syncState = markPendingEcho(text);
+						syncState = markPendingEcho(text, document.version + 1);
 						const edit = new vscode.WorkspaceEdit();
 						edit.replace(
 							document.uri,
@@ -190,7 +190,11 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider {
 					return;
 				}
 				const currentText = document.getText();
-				const { skip, next } = consumeDocumentChange(syncState, currentText);
+				const { skip, next } = consumeDocumentChange(
+					syncState,
+					currentText,
+					document.version,
+				);
 				syncState = next;
 				if (skip) {
 					return;
