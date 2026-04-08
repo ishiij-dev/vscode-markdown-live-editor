@@ -125,12 +125,12 @@
     "test:all": "npm run test:unit && npm run test:smoke"
   },
   "devDependencies": {
-    "@biomejs/biome": "2.4.9",
+    "@biomejs/biome": "^2.4.10",
     "@types/katex": "^0.16.8",
-    "@types/node": "25.x",
-    "@types/vscode": "^1.75.0",
+    "@types/node": "^25.5.2",
+    "@types/vscode": "^1.110.0",
     "@vscode/vsce": "^3.7.1",
-    "esbuild": "^0.27.4",
+    "esbuild": "^0.28.0",
     "npm-run-all2": "^8.0.4",
     "type-fest": "^5.5.0",
     "typescript": "^6.0.2"
@@ -145,8 +145,8 @@
     "@milkdown/preset-gfm": "^7.18.0",
     "@milkdown/prose": "^7.18.0",
     "highlight.js": "^11.11.1",
-    "katex": "^0.16.44",
-    "mermaid": "^11.13.0",
+    "katex": "^0.16.45",
+    "mermaid": "^11.14.0",
     "remark-emoji": "^5.0.2",
     "remark-frontmatter": "^5.0.0",
     "remark-math": "^6.0.0"
