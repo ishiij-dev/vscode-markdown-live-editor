@@ -2,6 +2,12 @@
 
 All notable changes to Markdown Live Editor will be documented in this file.
 
+## [0.5.3] - 2026-04-08
+
+### Fixed
+
+- Pinned `@types/vscode` to `1.75.0` to align with `engines.vscode` (`^1.75.0`) and fix VS Code Marketplace publish validation
+
 ## [0.5.2] - 2026-04-08
 
 ### Added
