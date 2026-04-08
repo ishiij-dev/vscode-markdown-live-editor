@@ -10,6 +10,7 @@ describe('extension manifest smoke', () => {
 	it('has core custom editor contribution', () => {
 		const pkg = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8')) as {
 			main: string;
+			browser?: string;
 			contributes?: {
 				customEditors?: Array<{ viewType: string }>;
 				commands?: Array<{ command: string }>;
@@ -17,6 +18,7 @@ describe('extension manifest smoke', () => {
 		};
 
 		assert.equal(pkg.main, './dist/extension.js');
+		assert.equal(pkg.browser, './dist/web/extension.js');
 		assert.ok(pkg.contributes?.customEditors?.some((e) => e.viewType === 'markdownLiveEditor.editor'));
 		assert.ok(pkg.contributes?.commands?.some((c) => c.command === 'markdownLiveEditor.openEditor'));
 	});

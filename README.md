@@ -4,7 +4,7 @@
 [![Installs](https://img.shields.io/visual-studio-marketplace/i/jishii1204.markdown-live-editor)](https://marketplace.visualstudio.com/items?itemName=jishii1204.markdown-live-editor)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-A WYSIWYG Markdown editor for Visual Studio Code.
+A WYSIWYG Markdown editor for Visual Studio Code and VS Code for the Web.
 Edit your Markdown files visually — what you see is what you get.
 
 ![Markdown Live Editor Demo](images/demo.gif)

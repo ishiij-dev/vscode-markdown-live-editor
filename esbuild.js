@@ -78,7 +78,7 @@ const copyKatexAssetsPlugin = {
 };
 
 async function main() {
-	// Extension Host bundle (Node.js)
+	// Extension Host bundle (desktop / Node.js)
 	const extCtx = await esbuild.context({
 		entryPoints: ['src/extension.ts'],
 		bundle: true,
@@ -88,6 +88,21 @@ async function main() {
 		sourcesContent: false,
 		platform: 'node',
 		outfile: 'dist/extension.js',
+		external: ['vscode'],
+		logLevel: 'silent',
+		plugins: [esbuildProblemMatcherPlugin],
+	});
+
+	// Extension Host bundle (web / browser worker)
+	const webExtCtx = await esbuild.context({
+		entryPoints: ['src/extension.ts'],
+		bundle: true,
+		format: 'cjs',
+		minify: production,
+		sourcemap: !production,
+		sourcesContent: false,
+		platform: 'browser',
+		outfile: 'dist/web/extension.js',
 		external: ['vscode'],
 		logLevel: 'silent',
 		plugins: [esbuildProblemMatcherPlugin],
@@ -131,15 +146,22 @@ async function main() {
 	});
 
 	if (watch) {
-		await Promise.all([extCtx.watch(), viewCtx.watch(), mermaidCtx.watch()]);
+		await Promise.all([
+			extCtx.watch(),
+			webExtCtx.watch(),
+			viewCtx.watch(),
+			mermaidCtx.watch(),
+		]);
 	} else {
 		await Promise.all([
 			extCtx.rebuild(),
+			webExtCtx.rebuild(),
 			viewCtx.rebuild(),
 			mermaidCtx.rebuild(),
 		]);
 		await Promise.all([
 			extCtx.dispose(),
+			webExtCtx.dispose(),
 			viewCtx.dispose(),
 			mermaidCtx.dispose(),
 		]);
