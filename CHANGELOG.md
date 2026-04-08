@@ -2,6 +2,17 @@
 
 All notable changes to Markdown Live Editor will be documented in this file.
 
+## [0.5.2] - 2026-04-08
+
+### Added
+
+- Added VS Code for the Web support with a `browser` extension entry and web extension bundle output
+
+### Changed
+
+- Replaced extension-host `Buffer` usage with `TextDecoder` / `TextEncoder` for web compatibility
+- Updated dependency lockfile to resolve high-severity npm audit findings in production dependencies
+
 ## [0.5.1] - 2026-03-30
 
 ### Changed
