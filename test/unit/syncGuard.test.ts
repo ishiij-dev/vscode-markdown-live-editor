@@ -53,4 +53,16 @@ describe('syncGuard', () => {
 		assert.equal(stale.skip, false);
 		assert.equal(stale.next.pendingEchoContent, null);
 	});
+
+	it('skips echo-back when only line endings differ (CRLF/LF)', () => {
+		const state = markPendingEcho('A\r\nB\r\n', 1000);
+		const result = consumeDocumentChange(state, 'A\nB\n', 1001);
+		assert.equal(result.skip, true);
+	});
+
+	it('skips echo-back when only a single EOF newline differs', () => {
+		const state = markPendingEcho('A\n', 1000);
+		const result = consumeDocumentChange(state, 'A', 1001);
+		assert.equal(result.skip, true);
+	});
 });

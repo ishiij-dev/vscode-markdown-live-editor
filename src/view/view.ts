@@ -653,6 +653,11 @@ function replaceContent(newMarkdown: string): void {
 	if (!editor) {
 		return;
 	}
+	// Drop any pending local sync; applying host content should be authoritative.
+	if (updateTimer) {
+		clearTimeout(updateTimer);
+		updateTimer = null;
+	}
 	isUpdatingFromExtension = true;
 	try {
 		editor.action((ctx) => {
@@ -667,21 +672,43 @@ function replaceContent(newMarkdown: string): void {
 				return;
 			}
 
+			const prevSelection = view.state.selection;
 			const parser = ctx.get(parserCtx);
 			const newDoc = parser(newMarkdown);
 			const { tr } = view.state;
 			tr.replaceWith(0, view.state.doc.content.size, newDoc.content);
 			view.dispatch(tr);
+			restoreSelection(view, prevSelection.from, prevSelection.to);
 
 			// Update baseline to the new normalized content
 			const updatedDoc = ctx.get(editorStateCtx).doc;
 			normalizedBaseline = cleanupTableBr(serializer(updatedDoc));
 			isUpdatingFromExtension = false;
 			sendHeadings(updatedDoc);
-			sendWordCount(updatedDoc);
+			const { from, to } = view.state.selection;
+			sendWordCount(updatedDoc, { from, to });
 		});
 	} catch {
 		isUpdatingFromExtension = false;
+	}
+}
+
+function restoreSelection(
+	view: import('@milkdown/prose/view').EditorView,
+	from: number,
+	to: number,
+): void {
+	const { doc } = view.state;
+	const maxPos = doc.content.size;
+	const nextFrom = Math.max(0, Math.min(from, maxPos));
+	const nextTo = Math.max(0, Math.min(to, maxPos));
+	try {
+		const current = view.state.selection;
+		if (current.from === nextFrom && current.to === nextTo) return;
+		const selection = TextSelection.create(doc, nextFrom, nextTo);
+		view.dispatch(view.state.tr.setSelection(selection));
+	} catch {
+		// Ignore invalid selection restoration and keep editor-operational.
 	}
 }
 

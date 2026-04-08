@@ -17,7 +17,7 @@ export function markPendingEcho(
 	nowMs = Date.now(),
 ): WebviewSyncState {
 	return {
-		pendingEchoContent: content,
+		pendingEchoContent: normalizeEchoContent(content),
 		pendingSetAtMs: nowMs,
 	};
 }
@@ -41,7 +41,7 @@ export function consumeDocumentChange(
 		};
 	}
 
-	if (currentText === state.pendingEchoContent) {
+	if (normalizeEchoContent(currentText) === state.pendingEchoContent) {
 		return {
 			skip: true,
 			next: initialWebviewSyncState,
@@ -52,4 +52,12 @@ export function consumeDocumentChange(
 		skip: false,
 		next: state,
 	};
+}
+
+function normalizeEchoContent(content: string): string {
+	const normalizedEol = content.replace(/\r\n?/g, '\n');
+	// Preserve semantic content while ignoring a single EOF newline difference.
+	return normalizedEol.endsWith('\n')
+		? normalizedEol.slice(0, normalizedEol.length - 1)
+		: normalizedEol;
 }
