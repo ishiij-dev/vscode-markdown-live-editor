@@ -145,7 +145,7 @@
     "@milkdown/prose": "^7.18.0",
     "highlight.js": "^11.11.1",
     "katex": "^0.16.44",
-    "mermaid": "^11.13.0",
+    "mermaid": "^11.14.0",
     "remark-emoji": "^5.0.2",
     "remark-frontmatter": "^5.0.0",
     "remark-math": "^6.0.0"
