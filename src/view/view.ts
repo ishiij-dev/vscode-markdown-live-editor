@@ -674,12 +674,14 @@ function replaceContent(newMarkdown: string): void {
 			}
 
 			const prevSelection = view.state.selection;
+			const prevScrollTop = getCurrentScrollTop(view);
 			const parser = ctx.get(parserCtx);
 			const newDoc = parser(newMarkdown);
 			const { tr } = view.state;
 			tr.replaceWith(0, view.state.doc.content.size, newDoc.content);
 			view.dispatch(tr);
 			restoreSelection(view, prevSelection.from, prevSelection.to);
+			restoreScrollTop(view, prevScrollTop);
 
 			// Update baseline to the new normalized content
 			const updatedDoc = ctx.get(editorStateCtx).doc;
@@ -705,11 +707,50 @@ function restoreSelection(
 	try {
 		const current = view.state.selection;
 		if (current.from === nextFrom && current.to === nextTo) return;
-		const selection = TextSelection.create(doc, nextFrom, nextTo);
+		const anchor = doc.resolve(nextFrom);
+		const head = doc.resolve(nextTo);
+		const selection =
+			nextFrom === nextTo
+				? TextSelection.near(anchor, -1)
+				: new TextSelection(anchor, head);
 		view.dispatch(view.state.tr.setSelection(selection));
 	} catch {
 		// Ignore invalid selection restoration and keep editor-operational.
 	}
+}
+
+function getCurrentScrollTop(
+	view: import('@milkdown/prose/view').EditorView,
+): number {
+	const root = getPrimaryScrollElement(view);
+	if (!root) return window.scrollY;
+	return root.scrollTop;
+}
+
+function restoreScrollTop(
+	view: import('@milkdown/prose/view').EditorView,
+	top: number,
+): void {
+	const root = getPrimaryScrollElement(view);
+	if (root) {
+		root.scrollTop = top;
+		return;
+	}
+	window.scrollTo({ top });
+}
+
+function getPrimaryScrollElement(
+	view: import('@milkdown/prose/view').EditorView,
+): HTMLElement | null {
+	const candidates: Array<Element | null> = [
+		view.dom.closest('.milkdown'),
+		view.dom.parentElement,
+		document.scrollingElement,
+	];
+	for (const candidate of candidates) {
+		if (candidate instanceof HTMLElement) return candidate;
+	}
+	return null;
 }
 
 function buildExportHtml(style: string, customStyle: string): string {

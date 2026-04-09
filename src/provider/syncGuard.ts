@@ -12,7 +12,7 @@ export const initialWebviewSyncState: WebviewSyncState = {
 
 // Pending echo state should be short-lived to avoid suppressing unrelated
 // updates that happen much later but happen to match previous content.
-export const PENDING_ECHO_TTL_MS = 1000;
+export const PENDING_ECHO_TTL_MS = 5000;
 
 export function markPendingEcho(
 	content: string,
