@@ -23,6 +23,7 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider {
 	private activeWebviewPanel: vscode.WebviewPanel | null = null;
 	private readonly styleUri: vscode.Uri;
 	private styleCache: string | null = null;
+	private syncDebugSeq = 0;
 
 	constructor(
 		private readonly context: vscode.ExtensionContext,
@@ -112,6 +113,28 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider {
 		// Prevent one echo-back round-trip for edits originating from webview.
 		// The state is consumed on the next matching document change.
 		let syncState: WebviewSyncState = initialWebviewSyncState;
+		const isSyncDebug = vscode.workspace
+			.getConfiguration('markdownLiveEditor')
+			.get<boolean>('syncDebugLogs', false);
+
+		const hashText = (value: string): number => {
+			let hash = 2166136261;
+			for (let i = 0; i < value.length; i += 1) {
+				hash ^= value.charCodeAt(i);
+				hash = Math.imul(hash, 16777619);
+			}
+			return hash >>> 0;
+		};
+
+		const logSync = (event: string, payload: Record<string, unknown> = {}) => {
+			if (!isSyncDebug) return;
+			this.syncDebugSeq += 1;
+			console.debug(`[MLE:host:${this.syncDebugSeq}] ${event}`, {
+				ts: Date.now(),
+				version: document.version,
+				...payload,
+			});
+		};
 
 		// Handle all messages from the webview in a single listener
 		const onDidReceiveMessage = webviewPanel.webview.onDidReceiveMessage(
@@ -129,12 +152,21 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider {
 							body: document.getText(),
 							documentDirUri,
 						};
+						logSync('send-init', {
+							length: document.getText().length,
+							hash: hashText(document.getText()),
+						});
 						webviewPanel.webview.postMessage(initMessage);
 						break;
 					}
 					case 'update': {
 						const text = message.body;
+						logSync('recv-update', {
+							length: text.length,
+							hash: hashText(text),
+						});
 						if (text === document.getText()) {
+							logSync('recv-update-skip-equal');
 							return;
 						}
 						syncState = markPendingEcho(text);
@@ -144,7 +176,12 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider {
 							new vscode.Range(0, 0, document.lineCount, 0),
 							text,
 						);
-						vscode.workspace.applyEdit(edit);
+						logSync('apply-edit-start', {
+							targetLength: text.length,
+							targetHash: hashText(text),
+						});
+						const applied = await vscode.workspace.applyEdit(edit);
+						logSync('apply-edit-done', { applied });
 						break;
 					}
 					case 'headings': {
@@ -193,12 +230,20 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider {
 				const { skip, next } = consumeDocumentChange(syncState, currentText);
 				syncState = next;
 				if (skip) {
+					logSync('send-update-skip-echo', {
+						length: currentText.length,
+						hash: hashText(currentText),
+					});
 					return;
 				}
 				const updateMessage: HostToEditorMessage = {
 					type: 'update',
 					body: currentText,
 				};
+				logSync('send-update', {
+					length: currentText.length,
+					hash: hashText(currentText),
+				});
 				webviewPanel.webview.postMessage(updateMessage);
 			},
 		);

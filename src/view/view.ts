@@ -89,6 +89,7 @@ window.addEventListener('unhandledrejection', (e) => {
 let editor: Editor | null = null;
 let isUpdatingFromExtension = false;
 let pendingRemoteMarkdown: string | null = null;
+let syncDebugSeq = 0;
 
 // We compare against the normalized baseline to detect real user changes.
 // This prevents the file from being dirtied just by opening it in the editor.
@@ -100,6 +101,33 @@ let isInitializing = false;
 let updateTimer: ReturnType<typeof setTimeout> | null = null;
 const UPDATE_DELAY_MS = 300;
 let disposeSearchUi: (() => void) | null = null;
+const SYNC_DEBUG_STORAGE_KEY = 'markdownLiveEditor.syncDebug';
+
+function isSyncDebugEnabled(): boolean {
+	try {
+		return window.localStorage.getItem(SYNC_DEBUG_STORAGE_KEY) === '1';
+	} catch {
+		return false;
+	}
+}
+
+function hashText(value: string): number {
+	let hash = 2166136261;
+	for (let i = 0; i < value.length; i += 1) {
+		hash ^= value.charCodeAt(i);
+		hash = Math.imul(hash, 16777619);
+	}
+	return hash >>> 0;
+}
+
+function syncDebug(event: string, payload: Record<string, unknown> = {}): void {
+	if (!isSyncDebugEnabled()) return;
+	syncDebugSeq += 1;
+	console.debug(`[MLE:view:${syncDebugSeq}] ${event}`, {
+		ts: Date.now(),
+		...payload,
+	});
+}
 
 // ProseMirror plugin that detects doc changes and syncs to the extension host.
 // Unlike Milkdown's markdownUpdated listener, this does NOT serialize the
@@ -119,6 +147,13 @@ const syncPlugin = $prose((ctx) => {
 						const serializer = ctx.get(serializerCtx);
 						const md = cleanupTableBr(serializer(view.state.doc));
 						if (md === normalizedBaseline) return;
+						syncDebug('post-update', {
+							length: md.length,
+							hash: hashText(md),
+							focus: view.hasFocus(),
+							selectionFrom: view.state.selection.from,
+							selectionTo: view.state.selection.to,
+						});
 						vscode.postMessage({ type: 'update', body: md });
 						normalizedBaseline = md;
 					}, UPDATE_DELAY_MS);
@@ -669,12 +704,25 @@ function replaceContent(newMarkdown: string): void {
 			);
 
 			if (currentMarkdown === newMarkdown) {
+				syncDebug('replace-skip-equal', {
+					incomingLength: newMarkdown.length,
+					incomingHash: hashText(newMarkdown),
+				});
 				isUpdatingFromExtension = false;
 				return;
 			}
 
 			const parser = ctx.get(parserCtx);
 			const newDoc = parser(newMarkdown);
+			syncDebug('replace-apply', {
+				incomingLength: newMarkdown.length,
+				incomingHash: hashText(newMarkdown),
+				currentLength: currentMarkdown.length,
+				currentHash: hashText(currentMarkdown),
+				focus: view.hasFocus(),
+				selectionFrom: view.state.selection.from,
+				selectionTo: view.state.selection.to,
+			});
 			const { tr } = view.state;
 			tr.replaceWith(0, view.state.doc.content.size, newDoc.content);
 			view.dispatch(tr);
@@ -707,9 +755,16 @@ function isEditorViewFocused(): boolean {
 
 function maybeApplyPendingRemoteUpdate(): void {
 	if (!pendingRemoteMarkdown) return;
-	if (isEditorViewFocused()) return;
+	if (isEditorViewFocused()) {
+		syncDebug('pending-defer-focused', {
+			length: pendingRemoteMarkdown.length,
+			hash: hashText(pendingRemoteMarkdown),
+		});
+		return;
+	}
 	const queued = pendingRemoteMarkdown;
 	pendingRemoteMarkdown = null;
+	syncDebug('pending-apply', { length: queued.length, hash: hashText(queued) });
 	replaceContent(queued);
 }
 
@@ -829,8 +884,17 @@ window.addEventListener('message', (event) => {
 			break;
 		}
 		case 'update': {
+			syncDebug('host-update-received', {
+				length: message.body.length,
+				hash: hashText(message.body),
+				focus: isEditorViewFocused(),
+			});
 			if (isEditorViewFocused()) {
 				pendingRemoteMarkdown = message.body;
+				syncDebug('host-update-queued', {
+					length: message.body.length,
+					hash: hashText(message.body),
+				});
 				break;
 			}
 			replaceContent(message.body);
