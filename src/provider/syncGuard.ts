@@ -60,7 +60,7 @@ export function consumeDocumentChange(
 	}
 
 	// Fallback for environments where version sequencing may differ subtly.
-	if (normalizeEchoContent(currentText) === state.pendingEchoContent) {
+	if (normalizeForSync(currentText) === state.pendingEchoContent) {
 		return {
 			skip: true,
 			next: initialWebviewSyncState,
@@ -73,10 +73,14 @@ export function consumeDocumentChange(
 	};
 }
 
-function normalizeEchoContent(content: string): string {
+export function normalizeForSync(content: string): string {
 	const normalizedEol = content.replace(/\r\n?/g, '\n');
 	// Preserve semantic content while ignoring a single EOF newline difference.
 	return normalizedEol.endsWith('\n')
 		? normalizedEol.slice(0, normalizedEol.length - 1)
 		: normalizedEol;
+}
+
+function normalizeEchoContent(content: string): string {
+	return normalizeForSync(content);
 }

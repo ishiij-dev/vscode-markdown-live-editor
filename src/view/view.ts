@@ -102,6 +102,17 @@ let updateTimer: ReturnType<typeof setTimeout> | null = null;
 const UPDATE_DELAY_MS = 300;
 let disposeSearchUi: (() => void) | null = null;
 
+function normalizeForSyncCompare(markdown: string): string {
+	const normalizedEol = markdown.replace(/\r\n?/g, '\n');
+	return normalizedEol.endsWith('\n')
+		? normalizedEol.slice(0, normalizedEol.length - 1)
+		: normalizedEol;
+}
+
+function isSemanticallySameMarkdown(a: string, b: string): boolean {
+	return normalizeForSyncCompare(a) === normalizeForSyncCompare(b);
+}
+
 // ProseMirror plugin that detects doc changes and syncs to the extension host.
 // Unlike Milkdown's markdownUpdated listener, this does NOT serialize the
 // document on every keystroke. Serialization only happens when the debounce
@@ -119,7 +130,7 @@ const syncPlugin = $prose((ctx) => {
 						updateTimer = null;
 						const serializer = ctx.get(serializerCtx);
 						const md = cleanupTableBr(serializer(view.state.doc));
-						if (md === normalizedBaseline) return;
+						if (isSemanticallySameMarkdown(md, normalizedBaseline)) return;
 						vscode.postMessage({ type: 'update', body: md });
 						normalizedBaseline = md;
 					}, UPDATE_DELAY_MS);
@@ -674,8 +685,9 @@ function replaceContent(newMarkdown: string): void {
 				serializer(ctx.get(editorStateCtx).doc),
 			);
 
-			if (currentMarkdown === newMarkdown) {
+			if (isSemanticallySameMarkdown(currentMarkdown, newMarkdown)) {
 				isUpdatingFromExtension = false;
+				normalizedBaseline = currentMarkdown;
 				return;
 			}
 

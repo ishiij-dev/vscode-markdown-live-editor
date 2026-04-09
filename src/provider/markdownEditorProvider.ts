@@ -11,6 +11,7 @@ import {
 	consumeDocumentChange,
 	initialWebviewSyncState,
 	markPendingEcho,
+	normalizeForSync,
 	type WebviewSyncState,
 } from './syncGuard';
 
@@ -134,7 +135,7 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider {
 					}
 					case 'update': {
 						const text = message.body;
-						if (text === document.getText()) {
+						if (normalizeForSync(text) === normalizeForSync(document.getText())) {
 							return;
 						}
 						syncState = markPendingEcho(text, document.version + 1);

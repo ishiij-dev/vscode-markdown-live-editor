@@ -4,6 +4,7 @@ import {
 	PENDING_ECHO_TTL_MS,
 	consumeDocumentChange,
 	markPendingEcho,
+	normalizeForSync,
 } from '../../src/provider/syncGuard';
 
 describe('syncGuard', () => {
@@ -70,5 +71,10 @@ describe('syncGuard', () => {
 	it('keeps pendingExpectedVersion in state', () => {
 		const state = markPendingEcho('A', 42, 1000);
 		assert.equal(state.pendingExpectedVersion, 42);
+	});
+
+	it('normalizes CRLF and a single EOF newline consistently', () => {
+		assert.equal(normalizeForSync('A\r\nB\r\n'), 'A\nB');
+		assert.equal(normalizeForSync('A\nB\n'), 'A\nB');
 	});
 });
