@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Quick question or discussion
+    url: https://github.com/ishiij-dev/vscode-markdown-live-editor/discussions
+    about: Not a bug? Feel free to start a casual discussion here.
