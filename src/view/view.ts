@@ -105,6 +105,32 @@ let disposeSearchUi: (() => void) | null = null;
 const USER_INTERACTION_GRACE_MS = 1200;
 let lastUserInteractionAt = 0;
 let isComposingInput = false;
+const SYNC_DEBUG_STORAGE_KEY = 'markdownLiveEditor.syncDebug';
+
+function isSyncDebugEnabled(): boolean {
+	try {
+		return window.localStorage.getItem(SYNC_DEBUG_STORAGE_KEY) === '1';
+	} catch {
+		return false;
+	}
+}
+
+function hashText(value: string): number {
+	let hash = 2166136261;
+	for (let i = 0; i < value.length; i += 1) {
+		hash ^= value.charCodeAt(i);
+		hash = Math.imul(hash, 16777619);
+	}
+	return hash >>> 0;
+}
+
+function syncDebug(event: string, payload: Record<string, unknown> = {}): void {
+	if (!isSyncDebugEnabled()) return;
+	console.debug(`[MLE sync] ${event}`, {
+		ts: Date.now(),
+		...payload,
+	});
+}
 
 function normalizeForSyncCompare(markdown: string): string {
 	const normalizedEol = markdown.replace(/\r\n?/g, '\n');
@@ -154,6 +180,10 @@ const syncPlugin = $prose((ctx) => {
 						const serializer = ctx.get(serializerCtx);
 						const md = cleanupTableBr(serializer(view.state.doc));
 						if (isSemanticallySameMarkdown(md, normalizedBaseline)) return;
+						syncDebug('post-update', {
+							length: md.length,
+							hash: hashText(normalizeForSyncCompare(md)),
+						});
 						vscode.postMessage({ type: 'update', body: md });
 						normalizedBaseline = md;
 					}, UPDATE_DELAY_MS);
@@ -709,6 +739,12 @@ function replaceContent(newMarkdown: string): void {
 			);
 
 			if (isSemanticallySameMarkdown(currentMarkdown, newMarkdown)) {
+				syncDebug('replace-skip-same', {
+					incomingLength: newMarkdown.length,
+					incomingHash: hashText(normalizeForSyncCompare(newMarkdown)),
+					currentLength: currentMarkdown.length,
+					currentHash: hashText(normalizeForSyncCompare(currentMarkdown)),
+				});
 				isUpdatingFromExtension = false;
 				normalizedBaseline = currentMarkdown;
 				return;
@@ -716,6 +752,15 @@ function replaceContent(newMarkdown: string): void {
 
 			const prevSelection = view.state.selection;
 			const prevScrollTop = getCurrentScrollTop(view);
+			syncDebug('replace-apply', {
+				incomingLength: newMarkdown.length,
+				incomingHash: hashText(normalizeForSyncCompare(newMarkdown)),
+				currentLength: currentMarkdown.length,
+				currentHash: hashText(normalizeForSyncCompare(currentMarkdown)),
+				selectionFrom: prevSelection.from,
+				selectionTo: prevSelection.to,
+				focused: view.hasFocus(),
+			});
 			const parser = ctx.get(parserCtx);
 			const newDoc = parser(newMarkdown);
 			const { tr } = view.state;
@@ -754,12 +799,23 @@ function isEditorViewFocused(): boolean {
 function maybeApplyPendingRemoteUpdate(): void {
 	if (!pendingRemoteMarkdown) return;
 	if (isUserInteractingNow()) {
+		syncDebug('pending-defer-user-interacting', {
+			pendingLength: pendingRemoteMarkdown.length,
+			pendingHash: hashText(normalizeForSyncCompare(pendingRemoteMarkdown)),
+		});
 		schedulePendingRemoteApply();
 		return;
 	}
-	if (isEditorViewFocused()) return;
+	if (isEditorViewFocused()) {
+		syncDebug('pending-defer-focused');
+		return;
+	}
 	const queued = pendingRemoteMarkdown;
 	pendingRemoteMarkdown = null;
+	syncDebug('pending-apply', {
+		length: queued.length,
+		hash: hashText(normalizeForSyncCompare(queued)),
+	});
 	replaceContent(queued);
 }
 
@@ -936,8 +992,15 @@ window.addEventListener('message', (event) => {
 			break;
 		}
 			case 'update': {
+				syncDebug('host-update-received', {
+					length: message.body.length,
+					hash: hashText(normalizeForSyncCompare(message.body)),
+					focused: isEditorViewFocused(),
+					interacting: isUserInteractingNow(),
+				});
 				if (isEditorViewFocused() || isUserInteractingNow()) {
 					pendingRemoteMarkdown = message.body;
+					syncDebug('host-update-queued');
 					schedulePendingRemoteApply();
 					break;
 				}
