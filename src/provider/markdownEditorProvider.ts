@@ -129,6 +129,7 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider {
 							type: 'init',
 							body: document.getText(),
 							version: document.version,
+							isWeb: vscode.env.uiKind === vscode.UIKind.Web,
 							documentDirUri,
 						};
 						webviewPanel.webview.postMessage(initMessage);

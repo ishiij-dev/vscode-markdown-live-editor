@@ -23,6 +23,7 @@ export interface InitMessage {
 	type: 'init';
 	body: string;
 	version: number;
+	isWeb: boolean;
 	documentDirUri: string;
 }
 
@@ -116,6 +117,7 @@ export function isHostToEditorMessage(
 			return (
 				typeof value.body === 'string' &&
 				typeof value.version === 'number' &&
+				typeof value.isWeb === 'boolean' &&
 				typeof value.documentDirUri === 'string'
 			);
 		case 'update':

@@ -12,6 +12,7 @@ describe('isHostToEditorMessage', () => {
 				type: 'init',
 				body: '# title',
 				version: 1,
+				isWeb: true,
 				documentDirUri: 'vscode-webview-resource://dir',
 			}),
 			true,
@@ -34,6 +35,15 @@ describe('isHostToEditorMessage', () => {
 
 	it('rejects invalid host messages', () => {
 		assert.equal(isHostToEditorMessage({ type: 'init', body: 'x' }), false);
+		assert.equal(
+			isHostToEditorMessage({
+				type: 'init',
+				body: 'x',
+				version: 1,
+				documentDirUri: 'vscode-webview-resource://dir',
+			}),
+			false,
+		);
 		assert.equal(
 			isHostToEditorMessage({
 				type: 'update',

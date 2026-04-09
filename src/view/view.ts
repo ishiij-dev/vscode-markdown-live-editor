@@ -91,6 +91,7 @@ let isUpdatingFromExtension = false;
 let hostDocumentVersion = 1;
 let pendingRemoteUpdate: { body: string; version: number } | null = null;
 let pendingRemoteApplyTimer: ReturnType<typeof setTimeout> | null = null;
+let isWebHost = false;
 
 // We compare against the normalized baseline to detect real user changes.
 // This prevents the file from being dirtied just by opening it in the editor.
@@ -832,6 +833,12 @@ function isEditorViewFocused(): boolean {
 function maybeApplyPendingRemoteUpdate(): void {
 	if (!pendingRemoteUpdate) return;
 	if (isUserInteractingNow()) {
+		if (isWebHost) {
+			syncDebug('pending-wait-web-user-interacting', {
+				pendingVersion: pendingRemoteUpdate.version,
+			});
+			return;
+		}
 		syncDebug('pending-defer-user-interacting', {
 			pendingLength: pendingRemoteUpdate.body.length,
 			pendingHash: hashText(normalizeForSyncCompare(pendingRemoteUpdate.body)),
@@ -988,6 +995,7 @@ window.addEventListener('message', (event) => {
 				return;
 			}
 			hostDocumentVersion = message.version;
+			isWebHost = message.isWeb;
 			if (message.documentDirUri) {
 				setDocumentDirUri(message.documentDirUri);
 			}
@@ -1016,7 +1024,9 @@ window.addEventListener('message', (event) => {
 			if (isEditorViewFocused() || isUserInteractingNow()) {
 				pendingRemoteUpdate = { body: message.body, version: message.version };
 				syncDebug('host-update-queued', { version: message.version });
-				schedulePendingRemoteApply();
+				if (!isWebHost) {
+					schedulePendingRemoteApply();
+				}
 				break;
 			}
 			hostDocumentVersion = message.version;
@@ -1079,6 +1089,7 @@ window.addEventListener('blur', () => {
 });
 
 window.addEventListener('focus', () => {
+	if (isWebHost) return;
 	setTimeout(maybeApplyPendingRemoteUpdate, 0);
 });
 
