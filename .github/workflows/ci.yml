@@ -58,3 +58,6 @@ jobs:
 
       - name: Build
         run: node esbuild.js
+
+      - name: VSIX package validation
+        run: npx vsce package --no-dependencies
