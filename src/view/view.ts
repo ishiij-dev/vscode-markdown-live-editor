@@ -106,6 +106,7 @@ let disposeSearchUi: (() => void) | null = null;
 const USER_INTERACTION_GRACE_MS = 1200;
 let lastUserInteractionAt = 0;
 let isComposingInput = false;
+let pendingLocalMarkdownForHost: string | null = null;
 const SYNC_DEBUG_STORAGE_KEY = 'markdownLiveEditor.syncDebug';
 
 function isSyncDebugEnabled(): boolean {
@@ -163,6 +164,28 @@ function schedulePendingRemoteApply(): void {
 	}, USER_INTERACTION_GRACE_MS);
 }
 
+function postUpdateToHost(markdown: string): void {
+	vscode.postMessage({
+		type: 'update',
+		body: markdown,
+		version: hostDocumentVersion,
+	});
+	hostDocumentVersion += 1;
+	normalizedBaseline = markdown;
+}
+
+function flushPendingLocalUpdate(): void {
+	if (!pendingLocalMarkdownForHost) return;
+	const markdown = pendingLocalMarkdownForHost;
+	pendingLocalMarkdownForHost = null;
+	syncDebug('post-update-flush', {
+		length: markdown.length,
+		hash: hashText(normalizeForSyncCompare(markdown)),
+		version: hostDocumentVersion,
+	});
+	postUpdateToHost(markdown);
+}
+
 // ProseMirror plugin that detects doc changes and syncs to the extension host.
 // Unlike Milkdown's markdownUpdated listener, this does NOT serialize the
 // document on every keystroke. Serialization only happens when the debounce
@@ -186,13 +209,11 @@ const syncPlugin = $prose((ctx) => {
 							hash: hashText(normalizeForSyncCompare(md)),
 							version: hostDocumentVersion,
 						});
-						vscode.postMessage({
-							type: 'update',
-							body: md,
-							version: hostDocumentVersion,
-						});
-						hostDocumentVersion += 1;
-						normalizedBaseline = md;
+						if (isWebHost) {
+							pendingLocalMarkdownForHost = md;
+							return;
+						}
+						postUpdateToHost(md);
 					}, UPDATE_DELAY_MS);
 				},
 			};
@@ -1084,6 +1105,7 @@ window.addEventListener('message', (event) => {
 });
 
 window.addEventListener('blur', () => {
+	flushPendingLocalUpdate();
 	// Apply queued host updates once the user leaves direct editor typing.
 	setTimeout(maybeApplyPendingRemoteUpdate, 0);
 });
@@ -1094,6 +1116,19 @@ window.addEventListener('focus', () => {
 });
 
 window.addEventListener('keydown', markUserInteraction, { capture: true });
+window.addEventListener(
+	'keydown',
+	(event) => {
+		if (!isWebHost) return;
+		if (
+			!((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 's')
+		) {
+			return;
+		}
+		flushPendingLocalUpdate();
+	},
+	{ capture: true },
+);
 window.addEventListener('beforeinput', markUserInteraction, { capture: true });
 window.addEventListener('input', markUserInteraction, { capture: true });
 window.addEventListener('pointerdown', markUserInteraction, { capture: true });
