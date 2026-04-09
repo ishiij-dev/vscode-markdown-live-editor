@@ -38,3 +38,14 @@ export function headingsEqual(a: HeadingData[], b: HeadingData[]): boolean {
 	}
 	return true;
 }
+
+export function clampSelectionRange(
+	from: number,
+	to: number,
+	maxPos: number,
+): { from: number; to: number } {
+	return {
+		from: Math.max(0, Math.min(from, maxPos)),
+		to: Math.max(0, Math.min(to, maxPos)),
+	};
+}

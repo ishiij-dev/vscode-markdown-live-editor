@@ -1,6 +1,7 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import {
+	clampSelectionRange,
 	cleanupTableBr,
 	countText,
 	headingsEqual,
@@ -40,5 +41,17 @@ describe('headingsEqual', () => {
 		const a: HeadingData[] = [{ text: 'A', level: 1, pos: 1 }];
 		const b: HeadingData[] = [{ text: 'A', level: 2, pos: 1 }];
 		assert.equal(headingsEqual(a, b), false);
+	});
+});
+
+describe('clampSelectionRange', () => {
+	it('clamps from/to into document bounds', () => {
+		const result = clampSelectionRange(-3, 99, 10);
+		assert.deepEqual(result, { from: 0, to: 10 });
+	});
+
+	it('keeps valid positions unchanged', () => {
+		const result = clampSelectionRange(2, 5, 10);
+		assert.deepEqual(result, { from: 2, to: 5 });
 	});
 });

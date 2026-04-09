@@ -23,12 +23,30 @@ describe('isHostToEditorMessage', () => {
 			isHostToEditorMessage({ type: 'requestHeadings' }),
 			true,
 		);
+		assert.equal(
+			isHostToEditorMessage({
+				type: 'requestExportHtml',
+				mode: 'clipboard',
+				style: '.x{}',
+				customStyle: '.y{}',
+			}),
+			true,
+		);
 	});
 
 	it('rejects invalid host messages', () => {
 		assert.equal(isHostToEditorMessage({ type: 'init', body: 'x' }), false);
 		assert.equal(
 			isHostToEditorMessage({ type: 'scrollToHeading', pos: '10' }),
+			false,
+		);
+		assert.equal(
+			isHostToEditorMessage({
+				type: 'requestExportHtml',
+				mode: 'pdf',
+				style: '.x{}',
+				customStyle: '.y{}',
+			}),
 			false,
 		);
 		assert.equal(isHostToEditorMessage({ type: 'unknown' }), false);

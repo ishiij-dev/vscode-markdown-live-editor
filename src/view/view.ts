@@ -24,6 +24,7 @@ import { alertPlugin } from './alertPlugin';
 import { autoPairPlugin } from './autoPairPlugin';
 import { codeBlockPlugin, highlightPlugin } from './codeBlockPlugin';
 import {
+	clampSelectionRange,
 	cleanupTableBr,
 	countText,
 	type HeadingData,
@@ -700,8 +701,11 @@ function restoreSelection(
 ): void {
 	const { doc } = view.state;
 	const maxPos = doc.content.size;
-	const nextFrom = Math.max(0, Math.min(from, maxPos));
-	const nextTo = Math.max(0, Math.min(to, maxPos));
+	const { from: nextFrom, to: nextTo } = clampSelectionRange(
+		from,
+		to,
+		maxPos,
+	);
 	try {
 		const current = view.state.selection;
 		if (current.from === nextFrom && current.to === nextTo) return;
