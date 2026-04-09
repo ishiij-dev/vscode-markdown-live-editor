@@ -24,7 +24,6 @@ import { alertPlugin } from './alertPlugin';
 import { autoPairPlugin } from './autoPairPlugin';
 import { codeBlockPlugin, highlightPlugin } from './codeBlockPlugin';
 import {
-	clampSelectionRange,
 	cleanupTableBr,
 	countText,
 	type HeadingData,
@@ -757,23 +756,29 @@ function replaceContent(newMarkdown: string): void {
 				return;
 			}
 
-			const prevSelection = view.state.selection;
 			const prevScrollTop = getCurrentScrollTop(view);
 			syncDebug('replace-apply', {
 				incomingLength: newMarkdown.length,
 				incomingHash: hashText(normalizeForSyncCompare(newMarkdown)),
 				currentLength: currentMarkdown.length,
 				currentHash: hashText(normalizeForSyncCompare(currentMarkdown)),
-				selectionFrom: prevSelection.from,
-				selectionTo: prevSelection.to,
+				selectionFrom: view.state.selection.from,
+				selectionTo: view.state.selection.to,
 				focused: view.hasFocus(),
 			});
 			const parser = ctx.get(parserCtx);
 			const newDoc = parser(newMarkdown);
-			const { tr } = view.state;
-			tr.replaceWith(0, view.state.doc.content.size, newDoc.content);
-			view.dispatch(tr);
-			restoreSelection(view, prevSelection.from, prevSelection.to);
+			const patch = applyMinimalDocPatch(view, newDoc);
+			if (!patch) {
+				isUpdatingFromExtension = false;
+				normalizedBaseline = currentMarkdown;
+				return;
+			}
+			syncDebug('replace-patch', {
+				from: patch.from,
+				toOld: patch.toOld,
+				toNew: patch.toNew,
+			});
 			restoreScrollTop(view, prevScrollTop);
 
 			// Update baseline to the new normalized content
@@ -787,6 +792,27 @@ function replaceContent(newMarkdown: string): void {
 	} catch {
 		isUpdatingFromExtension = false;
 	}
+}
+
+function applyMinimalDocPatch(
+	view: import('@milkdown/prose/view').EditorView,
+	newDoc: ProseMirrorNode,
+): { from: number; toOld: number; toNew: number } | null {
+	const currentDoc = view.state.doc;
+	const from = currentDoc.content.findDiffStart(newDoc.content);
+	if (from === null) return null;
+
+	const end = currentDoc.content.findDiffEnd(newDoc.content);
+	if (!end) return null;
+
+	let toOld = end.a;
+	let toNew = end.b;
+	if (toOld < from) toOld = from;
+	if (toNew < from) toNew = from;
+
+	const slice = newDoc.slice(from, toNew);
+	view.dispatch(view.state.tr.replace(from, toOld, slice));
+	return { from, toOld, toNew };
 }
 
 function isEditorViewFocused(): boolean {
@@ -827,29 +853,6 @@ function maybeApplyPendingRemoteUpdate(): void {
 		version: queued.version,
 	});
 	replaceContent(queued.body);
-}
-
-function restoreSelection(
-	view: import('@milkdown/prose/view').EditorView,
-	from: number,
-	to: number,
-): void {
-	const { doc } = view.state;
-	const maxPos = doc.content.size;
-	const { from: nextFrom, to: nextTo } = clampSelectionRange(from, to, maxPos);
-	try {
-		const current = view.state.selection;
-		if (current.from === nextFrom && current.to === nextTo) return;
-		const anchor = doc.resolve(nextFrom);
-		const head = doc.resolve(nextTo);
-		const selection =
-			nextFrom === nextTo
-				? TextSelection.near(anchor, -1)
-				: new TextSelection(anchor, head);
-		view.dispatch(view.state.tr.setSelection(selection));
-	} catch {
-		// Ignore invalid selection restoration and keep editor-operational.
-	}
 }
 
 function getCurrentScrollTop(

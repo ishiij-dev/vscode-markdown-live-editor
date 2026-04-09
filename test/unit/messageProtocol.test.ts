@@ -20,10 +20,7 @@ describe('isHostToEditorMessage', () => {
 			isHostToEditorMessage({ type: 'scrollToHeading', pos: 10 }),
 			true,
 		);
-		assert.equal(
-			isHostToEditorMessage({ type: 'requestHeadings' }),
-			true,
-		);
+		assert.equal(isHostToEditorMessage({ type: 'requestHeadings' }), true);
 		assert.equal(
 			isHostToEditorMessage({
 				type: 'requestExportHtml',
@@ -45,10 +42,7 @@ describe('isHostToEditorMessage', () => {
 			}),
 			true,
 		);
-		assert.equal(
-			isHostToEditorMessage({ type: 'update', body: 'x' }),
-			false,
-		);
+		assert.equal(isHostToEditorMessage({ type: 'update', body: 'x' }), false);
 		assert.equal(
 			isHostToEditorMessage({ type: 'scrollToHeading', pos: '10' }),
 			false,
