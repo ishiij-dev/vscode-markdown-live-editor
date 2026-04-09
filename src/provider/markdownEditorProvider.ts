@@ -212,6 +212,9 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider {
 				if (e.document.uri.toString() !== document.uri.toString()) {
 					return;
 				}
+				if (vscode.env.uiKind === vscode.UIKind.Web) {
+					return;
+				}
 				const currentText = document.getText();
 				const { skip, next } = consumeDocumentChange(
 					syncState,
