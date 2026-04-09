@@ -89,6 +89,7 @@ window.addEventListener('unhandledrejection', (e) => {
 
 let editor: Editor | null = null;
 let isUpdatingFromExtension = false;
+let pendingRemoteMarkdown: string | null = null;
 
 // We compare against the normalized baseline to detect real user changes.
 // This prevents the file from being dirtied just by opening it in the editor.
@@ -248,6 +249,10 @@ function setupSearchUi(instance: Editor): void {
 
 	instance.action((ctx) => {
 		const view = ctx.get(editorViewCtx);
+		const onEditorFocusOut = () => {
+			setTimeout(maybeApplyPendingRemoteUpdate, 0);
+		};
+		view.dom.addEventListener('focusout', onEditorFocusOut);
 		const panel = document.createElement('div');
 		panel.className = 'search-panel';
 		panel.setAttribute('data-show', 'false');
@@ -589,6 +594,7 @@ function setupSearchUi(instance: Editor): void {
 		disposeSearchUi = () => {
 			window.removeEventListener('keydown', onKeyDown);
 			setSearchStateChangeListener(null);
+			view.dom.removeEventListener('focusout', onEditorFocusOut);
 			panel.remove();
 		};
 	});
@@ -694,6 +700,28 @@ function replaceContent(newMarkdown: string): void {
 	} catch {
 		isUpdatingFromExtension = false;
 	}
+}
+
+function isEditorViewFocused(): boolean {
+	if (!editor) return false;
+	let focused = false;
+	try {
+		editor.action((ctx) => {
+			const view = ctx.get(editorViewCtx);
+			focused = view.hasFocus();
+		});
+	} catch {
+		return false;
+	}
+	return focused;
+}
+
+function maybeApplyPendingRemoteUpdate(): void {
+	if (!pendingRemoteMarkdown) return;
+	if (isEditorViewFocused()) return;
+	const queued = pendingRemoteMarkdown;
+	pendingRemoteMarkdown = null;
+	replaceContent(queued);
 }
 
 function restoreSelection(
@@ -869,6 +897,10 @@ window.addEventListener('message', (event) => {
 			break;
 		}
 		case 'update': {
+			if (isEditorViewFocused()) {
+				pendingRemoteMarkdown = message.body;
+				break;
+			}
 			replaceContent(message.body);
 			break;
 		}
@@ -920,6 +952,15 @@ window.addEventListener('message', (event) => {
 			break;
 		}
 	}
+});
+
+window.addEventListener('blur', () => {
+	// Apply queued host updates once the user leaves direct editor typing.
+	setTimeout(maybeApplyPendingRemoteUpdate, 0);
+});
+
+window.addEventListener('focus', () => {
+	setTimeout(maybeApplyPendingRemoteUpdate, 0);
 });
 
 // Notify the extension host that the webview is ready
