@@ -11,6 +11,7 @@ describe('isHostToEditorMessage', () => {
 			isHostToEditorMessage({
 				type: 'init',
 				body: '# title',
+				version: 1,
 				documentDirUri: 'vscode-webview-resource://dir',
 			}),
 			true,
@@ -37,6 +38,18 @@ describe('isHostToEditorMessage', () => {
 	it('rejects invalid host messages', () => {
 		assert.equal(isHostToEditorMessage({ type: 'init', body: 'x' }), false);
 		assert.equal(
+			isHostToEditorMessage({
+				type: 'update',
+				body: 'x',
+				version: 1,
+			}),
+			true,
+		);
+		assert.equal(
+			isHostToEditorMessage({ type: 'update', body: 'x' }),
+			false,
+		);
+		assert.equal(
 			isHostToEditorMessage({ type: 'scrollToHeading', pos: '10' }),
 			false,
 		);
@@ -57,7 +70,7 @@ describe('isEditorToHostMessage', () => {
 	it('accepts valid editor messages', () => {
 		assert.equal(isEditorToHostMessage({ type: 'ready' }), true);
 		assert.equal(
-			isEditorToHostMessage({ type: 'update', body: '# text' }),
+			isEditorToHostMessage({ type: 'update', body: '# text', version: 1 }),
 			true,
 		);
 		assert.equal(
@@ -66,6 +79,10 @@ describe('isEditorToHostMessage', () => {
 				items: [{ text: 'H1', level: 1, pos: 0 }],
 			}),
 			true,
+		);
+		assert.equal(
+			isEditorToHostMessage({ type: 'update', body: '# text' }),
+			false,
 		);
 		assert.equal(
 			isEditorToHostMessage({

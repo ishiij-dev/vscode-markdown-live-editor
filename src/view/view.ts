@@ -89,7 +89,8 @@ window.addEventListener('unhandledrejection', (e) => {
 
 let editor: Editor | null = null;
 let isUpdatingFromExtension = false;
-let pendingRemoteMarkdown: string | null = null;
+let hostDocumentVersion = 1;
+let pendingRemoteUpdate: { body: string; version: number } | null = null;
 let pendingRemoteApplyTimer: ReturnType<typeof setTimeout> | null = null;
 
 // We compare against the normalized baseline to detect real user changes.
@@ -183,8 +184,14 @@ const syncPlugin = $prose((ctx) => {
 						syncDebug('post-update', {
 							length: md.length,
 							hash: hashText(normalizeForSyncCompare(md)),
+							version: hostDocumentVersion,
 						});
-						vscode.postMessage({ type: 'update', body: md });
+						vscode.postMessage({
+							type: 'update',
+							body: md,
+							version: hostDocumentVersion,
+						});
+						hostDocumentVersion += 1;
 						normalizedBaseline = md;
 					}, UPDATE_DELAY_MS);
 				},
@@ -797,11 +804,12 @@ function isEditorViewFocused(): boolean {
 }
 
 function maybeApplyPendingRemoteUpdate(): void {
-	if (!pendingRemoteMarkdown) return;
+	if (!pendingRemoteUpdate) return;
 	if (isUserInteractingNow()) {
 		syncDebug('pending-defer-user-interacting', {
-			pendingLength: pendingRemoteMarkdown.length,
-			pendingHash: hashText(normalizeForSyncCompare(pendingRemoteMarkdown)),
+			pendingLength: pendingRemoteUpdate.body.length,
+			pendingHash: hashText(normalizeForSyncCompare(pendingRemoteUpdate.body)),
+			pendingVersion: pendingRemoteUpdate.version,
 		});
 		schedulePendingRemoteApply();
 		return;
@@ -810,13 +818,15 @@ function maybeApplyPendingRemoteUpdate(): void {
 		syncDebug('pending-defer-focused');
 		return;
 	}
-	const queued = pendingRemoteMarkdown;
-	pendingRemoteMarkdown = null;
+	const queued = pendingRemoteUpdate;
+	pendingRemoteUpdate = null;
+	hostDocumentVersion = queued.version;
 	syncDebug('pending-apply', {
-		length: queued.length,
-		hash: hashText(normalizeForSyncCompare(queued)),
+		length: queued.body.length,
+		hash: hashText(normalizeForSyncCompare(queued.body)),
+		version: queued.version,
 	});
-	replaceContent(queued);
+	replaceContent(queued.body);
 }
 
 function restoreSelection(
@@ -974,6 +984,7 @@ window.addEventListener('message', (event) => {
 			if (!container) {
 				return;
 			}
+			hostDocumentVersion = message.version;
 			if (message.documentDirUri) {
 				setDocumentDirUri(message.documentDirUri);
 			}
@@ -991,21 +1002,23 @@ window.addEventListener('message', (event) => {
 				});
 			break;
 		}
-			case 'update': {
-				syncDebug('host-update-received', {
-					length: message.body.length,
-					hash: hashText(normalizeForSyncCompare(message.body)),
-					focused: isEditorViewFocused(),
-					interacting: isUserInteractingNow(),
-				});
-				if (isEditorViewFocused() || isUserInteractingNow()) {
-					pendingRemoteMarkdown = message.body;
-					syncDebug('host-update-queued');
-					schedulePendingRemoteApply();
-					break;
-				}
-				replaceContent(message.body);
+		case 'update': {
+			syncDebug('host-update-received', {
+				length: message.body.length,
+				hash: hashText(normalizeForSyncCompare(message.body)),
+				version: message.version,
+				focused: isEditorViewFocused(),
+				interacting: isUserInteractingNow(),
+			});
+			if (isEditorViewFocused() || isUserInteractingNow()) {
+				pendingRemoteUpdate = { body: message.body, version: message.version };
+				syncDebug('host-update-queued', { version: message.version });
+				schedulePendingRemoteApply();
 				break;
+			}
+			hostDocumentVersion = message.version;
+			replaceContent(message.body);
+			break;
 		}
 		case 'scrollToHeading': {
 			if (!editor) break;

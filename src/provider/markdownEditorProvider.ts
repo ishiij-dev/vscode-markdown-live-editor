@@ -128,6 +128,7 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider {
 						const initMessage: HostToEditorMessage = {
 							type: 'init',
 							body: document.getText(),
+							version: document.version,
 							documentDirUri,
 						};
 						webviewPanel.webview.postMessage(initMessage);
@@ -135,7 +136,18 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider {
 					}
 					case 'update': {
 						const text = message.body;
-						if (normalizeForSync(text) === normalizeForSync(document.getText())) {
+						if (message.version !== document.version) {
+							const updateMessage: HostToEditorMessage = {
+								type: 'update',
+								body: document.getText(),
+								version: document.version,
+							};
+							webviewPanel.webview.postMessage(updateMessage);
+							return;
+						}
+						if (
+							normalizeForSync(text) === normalizeForSync(document.getText())
+						) {
 							return;
 						}
 						syncState = markPendingEcho(text, document.version + 1);
@@ -145,7 +157,16 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider {
 							new vscode.Range(0, 0, document.lineCount, 0),
 							text,
 						);
-						vscode.workspace.applyEdit(edit);
+						const applied = await vscode.workspace.applyEdit(edit);
+						if (!applied) {
+							syncState = initialWebviewSyncState;
+							const updateMessage: HostToEditorMessage = {
+								type: 'update',
+								body: document.getText(),
+								version: document.version,
+							};
+							webviewPanel.webview.postMessage(updateMessage);
+						}
 						break;
 					}
 					case 'headings': {
@@ -203,6 +224,7 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider {
 				const updateMessage: HostToEditorMessage = {
 					type: 'update',
 					body: currentText,
+					version: document.version,
 				};
 				webviewPanel.webview.postMessage(updateMessage);
 			},

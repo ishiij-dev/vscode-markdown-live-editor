@@ -16,11 +16,13 @@ export interface ReadyMessage {
 export interface UpdateMessage {
 	type: 'update';
 	body: string;
+	version: number;
 }
 
 export interface InitMessage {
 	type: 'init';
 	body: string;
+	version: number;
 	documentDirUri: string;
 }
 
@@ -113,10 +115,13 @@ export function isHostToEditorMessage(
 		case 'init':
 			return (
 				typeof value.body === 'string' &&
+				typeof value.version === 'number' &&
 				typeof value.documentDirUri === 'string'
 			);
 		case 'update':
-			return typeof value.body === 'string';
+			return (
+				typeof value.body === 'string' && typeof value.version === 'number'
+			);
 		case 'scrollToHeading':
 			return typeof value.pos === 'number';
 		case 'requestHeadings':
@@ -142,7 +147,9 @@ export function isEditorToHostMessage(
 		case 'ready':
 			return true;
 		case 'update':
-			return typeof value.body === 'string';
+			return (
+				typeof value.body === 'string' && typeof value.version === 'number'
+			);
 		case 'headings':
 			return Array.isArray(value.items) && value.items.every(isHeadingItem);
 		case 'wordCount':
