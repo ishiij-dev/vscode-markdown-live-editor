@@ -90,6 +90,7 @@ window.addEventListener('unhandledrejection', (e) => {
 let editor: Editor | null = null;
 let isUpdatingFromExtension = false;
 let pendingRemoteMarkdown: string | null = null;
+let pendingRemoteApplyTimer: ReturnType<typeof setTimeout> | null = null;
 
 // We compare against the normalized baseline to detect real user changes.
 // This prevents the file from being dirtied just by opening it in the editor.
@@ -101,6 +102,9 @@ let isInitializing = false;
 let updateTimer: ReturnType<typeof setTimeout> | null = null;
 const UPDATE_DELAY_MS = 300;
 let disposeSearchUi: (() => void) | null = null;
+const USER_INTERACTION_GRACE_MS = 1200;
+let lastUserInteractionAt = 0;
+let isComposingInput = false;
 
 function normalizeForSyncCompare(markdown: string): string {
 	const normalizedEol = markdown.replace(/\r\n?/g, '\n');
@@ -111,6 +115,25 @@ function normalizeForSyncCompare(markdown: string): string {
 
 function isSemanticallySameMarkdown(a: string, b: string): boolean {
 	return normalizeForSyncCompare(a) === normalizeForSyncCompare(b);
+}
+
+function markUserInteraction(): void {
+	lastUserInteractionAt = Date.now();
+}
+
+function isUserInteractingNow(): boolean {
+	if (isComposingInput) return true;
+	return Date.now() - lastUserInteractionAt < USER_INTERACTION_GRACE_MS;
+}
+
+function schedulePendingRemoteApply(): void {
+	if (pendingRemoteApplyTimer) {
+		clearTimeout(pendingRemoteApplyTimer);
+	}
+	pendingRemoteApplyTimer = setTimeout(() => {
+		pendingRemoteApplyTimer = null;
+		maybeApplyPendingRemoteUpdate();
+	}, USER_INTERACTION_GRACE_MS);
 }
 
 // ProseMirror plugin that detects doc changes and syncs to the extension host.
@@ -730,6 +753,10 @@ function isEditorViewFocused(): boolean {
 
 function maybeApplyPendingRemoteUpdate(): void {
 	if (!pendingRemoteMarkdown) return;
+	if (isUserInteractingNow()) {
+		schedulePendingRemoteApply();
+		return;
+	}
 	if (isEditorViewFocused()) return;
 	const queued = pendingRemoteMarkdown;
 	pendingRemoteMarkdown = null;
@@ -908,13 +935,14 @@ window.addEventListener('message', (event) => {
 				});
 			break;
 		}
-		case 'update': {
-			if (isEditorViewFocused()) {
-				pendingRemoteMarkdown = message.body;
+			case 'update': {
+				if (isEditorViewFocused() || isUserInteractingNow()) {
+					pendingRemoteMarkdown = message.body;
+					schedulePendingRemoteApply();
+					break;
+				}
+				replaceContent(message.body);
 				break;
-			}
-			replaceContent(message.body);
-			break;
 		}
 		case 'scrollToHeading': {
 			if (!editor) break;
@@ -972,6 +1000,20 @@ window.addEventListener('blur', () => {
 });
 
 window.addEventListener('focus', () => {
+	setTimeout(maybeApplyPendingRemoteUpdate, 0);
+});
+
+window.addEventListener('keydown', markUserInteraction, { capture: true });
+window.addEventListener('beforeinput', markUserInteraction, { capture: true });
+window.addEventListener('input', markUserInteraction, { capture: true });
+window.addEventListener('pointerdown', markUserInteraction, { capture: true });
+window.addEventListener('compositionstart', () => {
+	isComposingInput = true;
+	markUserInteraction();
+});
+window.addEventListener('compositionend', () => {
+	isComposingInput = false;
+	markUserInteraction();
 	setTimeout(maybeApplyPendingRemoteUpdate, 0);
 });
 
