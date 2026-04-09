@@ -701,11 +701,7 @@ function restoreSelection(
 ): void {
 	const { doc } = view.state;
 	const maxPos = doc.content.size;
-	const { from: nextFrom, to: nextTo } = clampSelectionRange(
-		from,
-		to,
-		maxPos,
-	);
+	const { from: nextFrom, to: nextTo } = clampSelectionRange(from, to, maxPos);
 	try {
 		const current = view.state.selection;
 		if (current.from === nextFrom && current.to === nextTo) return;
