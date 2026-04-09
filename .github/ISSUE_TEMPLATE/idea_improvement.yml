@@ -1,0 +1,28 @@
+name: Idea / improvement（改善提案）
+description: Suggest a small improvement or new behavior（改善案・提案）
+title: "idea: "
+labels:
+  - enhancement
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem are you trying to solve?（どんな課題がありますか？）
+      placeholder: "Example: Editing in web can feel unstable during fast typing"
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Your idea（提案内容）
+      description: Rough ideas are welcome.（ラフな案でOKです）
+      placeholder: "Example: Disable auto-sync on web while typing"
+    validations:
+      required: true
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Extra context (optional)（補足・任意）
+      description: Related issue/PR links, screenshots, etc.（関連リンクや画像など）

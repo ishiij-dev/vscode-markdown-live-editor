@@ -1,0 +1,44 @@
+name: Bug report（不具合報告）
+description: Something is broken or confusing（不具合・違和感の報告）
+title: "bug: "
+labels:
+  - bug
+body:
+  - type: textarea
+    id: summary
+    attributes:
+      label: What happened?（何が起きましたか？）
+      description: A short summary is enough.（短くてOKです）
+      placeholder: "Example: Cursor jumps to the end while typing in github.dev"
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: How to reproduce（再現手順）
+      description: Keep it simple. 2-5 steps is fine.（2〜5手順くらいでOK）
+      placeholder: |
+        1. Open ...
+        2. Type ...
+        3. See ...
+    validations:
+      required: true
+
+  - type: dropdown
+    id: environment
+    attributes:
+      label: Where did you see this?（どこで発生しましたか？）
+      options:
+        - VS Code Desktop
+        - github.dev / vscode.dev
+        - Both
+        - Not sure
+    validations:
+      required: true
+
+  - type: textarea
+    id: notes
+    attributes:
+      label: Extra notes (optional)（補足・任意）
+      description: Logs, screenshots, or anything helpful.（ログ・画像など）
