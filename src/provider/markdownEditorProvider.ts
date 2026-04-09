@@ -137,7 +137,8 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider {
 					}
 					case 'update': {
 						const text = message.body;
-						if (message.version !== document.version) {
+						const isWeb = vscode.env.uiKind === vscode.UIKind.Web;
+						if (!isWeb && message.version !== document.version) {
 							const updateMessage: HostToEditorMessage = {
 								type: 'update',
 								body: document.getText(),
@@ -161,12 +162,14 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider {
 						const applied = await vscode.workspace.applyEdit(edit);
 						if (!applied) {
 							syncState = initialWebviewSyncState;
-							const updateMessage: HostToEditorMessage = {
-								type: 'update',
-								body: document.getText(),
-								version: document.version,
-							};
-							webviewPanel.webview.postMessage(updateMessage);
+							if (!isWeb) {
+								const updateMessage: HostToEditorMessage = {
+									type: 'update',
+									body: document.getText(),
+									version: document.version,
+								};
+								webviewPanel.webview.postMessage(updateMessage);
+							}
 						}
 						break;
 					}
