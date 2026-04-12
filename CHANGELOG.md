@@ -2,6 +2,25 @@
 
 All notable changes to Markdown Live Editor will be documented in this file.
 
+## [0.6.0] - 2026-04-12
+
+### Added
+
+- Added optional `markdownLiveEditor.visualLineNumbers` setting to show a left gutter with visual line references
+- Added row-level numbering support for headings, paragraphs with hard breaks, list items, table rows, code blocks, and expanded frontmatter rows
+- Added unit test coverage for visual line-number helper logic (row deduplication and line counting utilities)
+
+### Changed
+
+- Simplified line-reference behavior by consolidating on `visualLineNumbers`
+- Clarified soft-wrap vs hard-break behavior for visual line numbering in README
+
+### Fixed
+
+- Stabilized visual line numbering while scrolling to keep row numbers consistent
+- Reduced overlapping line-number rendering around inline-heavy content (for example, math and footnotes)
+- Improved sync handling to defer host-driven updates while the editor has focus
+
 ## [0.5.3] - 2026-04-08
 
 ### Fixed
