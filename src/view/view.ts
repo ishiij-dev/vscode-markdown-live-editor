@@ -25,9 +25,13 @@ import { autoPairPlugin } from './autoPairPlugin';
 import { codeBlockPlugin, highlightPlugin } from './codeBlockPlugin';
 import {
 	cleanupTableBr,
+	countLogicalTextLines,
+	countParagraphRowsFromHardBreaks,
 	countText,
+	dedupeNearbyRowTops,
 	type HeadingData,
 	headingsEqual,
+	shouldMergeNearbyTop,
 	type WordCountData,
 } from './editorTestUtils';
 import { emojiPlugin } from './emojiPlugin';
@@ -422,15 +426,7 @@ function collectCodeBlockVisualRows(
 		return [rect.top - proseTop];
 	}
 
-	tops.sort((a, b) => a - b);
-	const deduped: number[] = [];
-	for (const top of tops) {
-		const last = deduped[deduped.length - 1];
-		if (last === undefined || Math.abs(top - last) > 1.5) {
-			deduped.push(top);
-		}
-	}
-	return deduped;
+	return dedupeNearbyRowTops(tops, 1.5);
 }
 
 function collectParagraphVisualRows(
@@ -442,7 +438,7 @@ function collectParagraphVisualRows(
 	const lineHeightPx = Number.parseFloat(style.lineHeight);
 	const lineHeight = Number.isFinite(lineHeightPx) ? lineHeightPx : 22;
 	const hardBreakCount = block.querySelectorAll('br').length;
-	const lineCount = Math.max(1, hardBreakCount + 1);
+	const lineCount = countParagraphRowsFromHardBreaks(hardBreakCount);
 
 	const rows: number[] = [];
 	for (let i = 0; i < lineCount; i += 1) {
@@ -475,7 +471,7 @@ function collectVisualRowsForBlock(
 			const style = window.getComputedStyle(textarea);
 			const lineHeightPx = Number.parseFloat(style.lineHeight);
 			const lineHeight = Number.isFinite(lineHeightPx) ? lineHeightPx : 20;
-			const lineCount = Math.max(1, textarea.value.split(/\r\n|\n|\r/).length);
+			const lineCount = countLogicalTextLines(textarea.value);
 			for (let i = 0; i < lineCount; i += 1) {
 				blockRows.push(textRect.top - proseTop + i * lineHeight);
 			}
@@ -536,7 +532,7 @@ function renderVisualLineNumbers(): void {
 			const absoluteTop = proseRect.top + y;
 			// Merge near-identical tops that come from inline widget fragments
 			// (for example, footnote/math internals) and treat them as one visual row.
-			if (Math.abs(absoluteTop - lastCountedTop) < 4) {
+			if (shouldMergeNearbyTop(absoluteTop, lastCountedTop, 4)) {
 				continue;
 			}
 			lastCountedTop = absoluteTop;

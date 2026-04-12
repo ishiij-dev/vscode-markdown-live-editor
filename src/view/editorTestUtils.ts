@@ -38,3 +38,36 @@ export function headingsEqual(a: HeadingData[], b: HeadingData[]): boolean {
 	}
 	return true;
 }
+
+export function dedupeNearbyRowTops(
+	tops: number[],
+	minDistance = 1.5,
+): number[] {
+	const sorted = [...tops].sort((a, b) => a - b);
+	const deduped: number[] = [];
+	for (const top of sorted) {
+		const last = deduped[deduped.length - 1];
+		if (last === undefined || Math.abs(top - last) > minDistance) {
+			deduped.push(top);
+		}
+	}
+	return deduped;
+}
+
+export function countParagraphRowsFromHardBreaks(
+	hardBreakCount: number,
+): number {
+	return Math.max(1, hardBreakCount + 1);
+}
+
+export function countLogicalTextLines(text: string): number {
+	return Math.max(1, text.split(/\r\n|\n|\r/).length);
+}
+
+export function shouldMergeNearbyTop(
+	currentTop: number,
+	lastTop: number,
+	threshold = 4,
+): boolean {
+	return Math.abs(currentTop - lastTop) < threshold;
+}
