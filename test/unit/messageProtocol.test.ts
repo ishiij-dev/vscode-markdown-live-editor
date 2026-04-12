@@ -12,6 +12,7 @@ describe('isHostToEditorMessage', () => {
 				type: 'init',
 				body: '# title',
 				documentDirUri: 'vscode-webview-resource://dir',
+				visualLineNumbers: false,
 			}),
 			true,
 		);

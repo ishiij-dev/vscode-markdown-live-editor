@@ -2,8 +2,12 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import {
 	cleanupTableBr,
+	countLogicalTextLines,
+	countParagraphRowsFromHardBreaks,
 	countText,
+	dedupeNearbyRowTops,
 	headingsEqual,
+	shouldMergeNearbyTop,
 	type HeadingData,
 } from '../../src/view/editorTestUtils';
 
@@ -40,5 +44,42 @@ describe('headingsEqual', () => {
 		const a: HeadingData[] = [{ text: 'A', level: 1, pos: 1 }];
 		const b: HeadingData[] = [{ text: 'A', level: 2, pos: 1 }];
 		assert.equal(headingsEqual(a, b), false);
+	});
+});
+
+describe('dedupeNearbyRowTops', () => {
+	it('merges nearby tops with threshold and keeps sorted order', () => {
+		const tops = [30, 10, 10.9, 50, 51.2, 80];
+		const actual = dedupeNearbyRowTops(tops, 1.5);
+		assert.deepEqual(actual, [10, 30, 50, 80]);
+	});
+});
+
+describe('countParagraphRowsFromHardBreaks', () => {
+	it('returns hardBreakCount + 1 with minimum 1', () => {
+		assert.equal(countParagraphRowsFromHardBreaks(0), 1);
+		assert.equal(countParagraphRowsFromHardBreaks(1), 2);
+		assert.equal(countParagraphRowsFromHardBreaks(3), 4);
+	});
+});
+
+describe('countLogicalTextLines', () => {
+	it('counts CRLF/LF/CR line endings consistently', () => {
+		assert.equal(countLogicalTextLines('a\nb\nc'), 3);
+		assert.equal(countLogicalTextLines('a\r\nb\r\nc'), 3);
+		assert.equal(countLogicalTextLines('a\rb\rc'), 3);
+		assert.equal(countLogicalTextLines('single line'), 1);
+	});
+});
+
+describe('shouldMergeNearbyTop', () => {
+	it('returns true when tops are within threshold', () => {
+		assert.equal(shouldMergeNearbyTop(101, 100, 4), true);
+		assert.equal(shouldMergeNearbyTop(103.9, 100, 4), true);
+	});
+
+	it('returns false when tops are outside threshold', () => {
+		assert.equal(shouldMergeNearbyTop(104, 100, 4), false);
+		assert.equal(shouldMergeNearbyTop(110, 100, 4), false);
 	});
 });

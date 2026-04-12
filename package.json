@@ -105,6 +105,11 @@
           "type": "string",
           "default": "",
           "description": "Custom CSS to inject into the Markdown Live Editor."
+        },
+        "markdownLiveEditor.visualLineNumbers": {
+          "type": "boolean",
+          "default": false,
+          "description": "Show logical line numbers for each rendered block in a left gutter (ignores visual spacing like margins)."
         }
       }
     }
