@@ -402,7 +402,11 @@ function collectCodeBlockVisualRows(
 
 	let current = walker.nextNode();
 	while (current) {
-		if (current instanceof Text && current.nodeValue && current.nodeValue.length > 0) {
+		if (
+			current instanceof Text &&
+			current.nodeValue &&
+			current.nodeValue.length > 0
+		) {
 			range.selectNodeContents(current);
 			const rects = Array.from(range.getClientRects());
 			for (const rect of rects) {
@@ -429,7 +433,10 @@ function collectCodeBlockVisualRows(
 	return deduped;
 }
 
-function collectParagraphVisualRows(block: HTMLElement, proseTop: number): number[] {
+function collectParagraphVisualRows(
+	block: HTMLElement,
+	proseTop: number,
+): number[] {
 	const rect = block.getBoundingClientRect();
 	const style = window.getComputedStyle(block);
 	const lineHeightPx = Number.parseFloat(style.lineHeight);
@@ -468,10 +475,7 @@ function collectVisualRowsForBlock(
 			const style = window.getComputedStyle(textarea);
 			const lineHeightPx = Number.parseFloat(style.lineHeight);
 			const lineHeight = Number.isFinite(lineHeightPx) ? lineHeightPx : 20;
-			const lineCount = Math.max(
-				1,
-				textarea.value.split(/\r\n|\n|\r/).length,
-			);
+			const lineCount = Math.max(1, textarea.value.split(/\r\n|\n|\r/).length);
 			for (let i = 0; i < lineCount; i += 1) {
 				blockRows.push(textRect.top - proseTop + i * lineHeight);
 			}
