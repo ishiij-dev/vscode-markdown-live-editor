@@ -54,7 +54,7 @@ ext install jishii1204.markdown-live-editor
 | Setting | Description | Default |
 |---------|-------------|---------|
 | `markdownLiveEditor.customCss` | Custom CSS to inject into the editor | `""` |
-| `markdownLiveEditor.visualLineNumbers` | Show logical line numbers per rendered block in a left gutter (ignores spacing margins) | `false` |
+| `markdownLiveEditor.visualLineNumbers` | Show logical line numbers per rendered block in a left gutter (ignores spacing margins; paragraph soft wraps are not counted separately, while hard breaks are counted) | `false` |
 
 ### Export Styled HTML
 
