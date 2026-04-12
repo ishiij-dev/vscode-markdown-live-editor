@@ -35,6 +35,7 @@ ext install jishii1204.markdown-live-editor
 - **Emoji shortcodes** — `:smile:` → 😄, `:rocket:` → 🚀
 - **Relative image paths** — Display local images referenced with relative paths
 - **Custom CSS** — Inject your own styles via settings
+- **Visual line numbers (optional)** — Show logical line numbers per rendered block in a left gutter
 - **Theme integration** — Adapts to light, dark, and high-contrast themes
 
 ## Usage
@@ -53,6 +54,7 @@ ext install jishii1204.markdown-live-editor
 | Setting | Description | Default |
 |---------|-------------|---------|
 | `markdownLiveEditor.customCss` | Custom CSS to inject into the editor | `""` |
+| `markdownLiveEditor.visualLineNumbers` | Show logical line numbers per rendered block in a left gutter (ignores spacing margins) | `false` |
 
 ### Export Styled HTML
 

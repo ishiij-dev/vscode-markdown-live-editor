@@ -59,10 +59,46 @@ body {
 .ProseMirror h4,
 .ProseMirror h5,
 .ProseMirror h6 {
+	position: relative;
 	font-weight: 600;
 	margin-top: 24px;
 	margin-bottom: 16px;
 	line-height: 1.25;
+}
+
+.visual-line-gutter {
+	display: none;
+	position: fixed;
+	width: 40px;
+	z-index: 900;
+	pointer-events: none;
+}
+
+.visual-line-gutter[data-show="true"] {
+	display: block;
+}
+
+.visual-line-number {
+	position: absolute;
+	right: 6px;
+	transform: translateY(0);
+	font-size: 11px;
+	line-height: 1;
+	color: var(--vscode-editorLineNumber-foreground, #858585);
+	opacity: 0.78;
+	font-variant-numeric: tabular-nums;
+	font-family: var(
+		--vscode-editor-font-family,
+		"SF Mono",
+		Monaco,
+		Menlo,
+		Consolas,
+		"Ubuntu Mono",
+		"Liberation Mono",
+		"DejaVu Sans Mono",
+		"Courier New",
+		monospace
+	);
 }
 
 .ProseMirror h1 {

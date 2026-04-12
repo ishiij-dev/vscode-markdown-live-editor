@@ -22,6 +22,7 @@ export interface InitMessage {
 	type: 'init';
 	body: string;
 	documentDirUri: string;
+	visualLineNumbers: boolean;
 }
 
 export interface ScrollToHeadingMessage {
@@ -113,7 +114,8 @@ export function isHostToEditorMessage(
 		case 'init':
 			return (
 				typeof value.body === 'string' &&
-				typeof value.documentDirUri === 'string'
+				typeof value.documentDirUri === 'string' &&
+				typeof value.visualLineNumbers === 'boolean'
 			);
 		case 'update':
 			return typeof value.body === 'string';

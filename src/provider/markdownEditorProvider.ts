@@ -147,10 +147,17 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider {
 						const documentDirUri = webviewPanel.webview
 							.asWebviewUri(documentDir)
 							.toString();
+						const config =
+							vscode.workspace.getConfiguration('markdownLiveEditor');
+						const visualLineNumbers = config.get<boolean>(
+							'visualLineNumbers',
+							false,
+						);
 						const initMessage: HostToEditorMessage = {
 							type: 'init',
 							body: document.getText(),
 							documentDirUri,
+							visualLineNumbers,
 						};
 						logSync('send-init', {
 							length: document.getText().length,
