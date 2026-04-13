@@ -22,12 +22,20 @@ describe('isHostToEditorMessage', () => {
 			true,
 		);
 		assert.equal(isHostToEditorMessage({ type: 'requestHeadings' }), true);
+		assert.equal(
+			isHostToEditorMessage({ type: 'setSyncDebugLogs', enabled: true }),
+			true,
+		);
 	});
 
 	it('rejects invalid host messages', () => {
 		assert.equal(isHostToEditorMessage({ type: 'init', body: 'x' }), false);
 		assert.equal(
 			isHostToEditorMessage({ type: 'scrollToHeading', pos: '10' }),
+			false,
+		);
+		assert.equal(
+			isHostToEditorMessage({ type: 'setSyncDebugLogs', enabled: 'true' }),
 			false,
 		);
 		assert.equal(isHostToEditorMessage({ type: 'unknown' }), false);

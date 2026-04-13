@@ -98,6 +98,15 @@ const SYNC_DEBUG_STORAGE_KEY = 'markdownLiveEditor.syncDebug';
 let visualLineNumbersEnabled = false;
 let syncDebugLogsEnabled = false;
 
+function setSyncDebugLogsEnabled(enabled: boolean): void {
+	syncDebugLogsEnabled = enabled;
+	try {
+		window.localStorage.setItem(SYNC_DEBUG_STORAGE_KEY, enabled ? '1' : '0');
+	} catch {
+		// Ignore localStorage failures in constrained webview environments.
+	}
+}
+
 function isSyncDebugEnabled(): boolean {
 	if (syncDebugLogsEnabled) return true;
 	try {
@@ -524,15 +533,7 @@ window.addEventListener('message', (event) => {
 			if (message.documentDirUri) {
 				setDocumentDirUri(message.documentDirUri);
 			}
-			syncDebugLogsEnabled = message.syncDebugLogs;
-			try {
-				window.localStorage.setItem(
-					SYNC_DEBUG_STORAGE_KEY,
-					syncDebugLogsEnabled ? '1' : '0',
-				);
-			} catch {
-				// Ignore localStorage failures in constrained webview environments.
-			}
+			setSyncDebugLogsEnabled(message.syncDebugLogs);
 			visualLineNumbersEnabled = message.visualLineNumbers;
 			visualLineNumbersController.updateEnabled(visualLineNumbersEnabled);
 			createEditor(container, message.body)
@@ -611,6 +612,10 @@ window.addEventListener('message', (event) => {
 				html,
 				mode: request.mode,
 			});
+			break;
+		}
+		case 'setSyncDebugLogs': {
+			setSyncDebugLogsEnabled(message.enabled);
 			break;
 		}
 	}

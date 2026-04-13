@@ -39,6 +39,11 @@ export interface RequestWordCountMessage {
 	type: 'requestWordCount';
 }
 
+export interface SetSyncDebugLogsMessage {
+	type: 'setSyncDebugLogs';
+	enabled: boolean;
+}
+
 export interface HeadingsMessage {
 	type: 'headings';
 	items: HeadingItem[];
@@ -84,6 +89,7 @@ export type HostToEditorMessage =
 	| InitMessage
 	| RequestHeadingsMessage
 	| RequestWordCountMessage
+	| SetSyncDebugLogsMessage
 	| ScrollToHeadingMessage
 	| UpdateMessage
 	| RequestExportHtmlMessage;
@@ -136,6 +142,8 @@ export function isHostToEditorMessage(
 		case 'requestHeadings':
 		case 'requestWordCount':
 			return true;
+		case 'setSyncDebugLogs':
+			return typeof value.enabled === 'boolean';
 		case 'requestExportHtml':
 			return (
 				typeof value.mode === 'string' &&

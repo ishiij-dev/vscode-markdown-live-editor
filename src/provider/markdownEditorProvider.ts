@@ -124,12 +124,13 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider {
 		// Prevent one echo-back round-trip for edits originating from webview.
 		// The state is consumed on the next matching document change.
 		let syncState: WebviewSyncState = initialWebviewSyncState;
-		const isSyncDebug = vscode.workspace
-			.getConfiguration('markdownLiveEditor')
-			.get<boolean>('syncDebugLogs', false);
+		const isSyncDebugEnabled = () =>
+			vscode.workspace
+				.getConfiguration('markdownLiveEditor')
+				.get<boolean>('syncDebugLogs', false);
 
 		const logSync = (event: string, payload: Record<string, unknown> = {}) => {
-			if (!isSyncDebug) return;
+			if (!isSyncDebugEnabled()) return;
 			this.syncDebugSeq += 1;
 			const entry = {
 				ts: Date.now(),
@@ -164,7 +165,7 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider {
 							body: document.getText(),
 							documentDirUri,
 							visualLineNumbers,
-							syncDebugLogs: isSyncDebug,
+							syncDebugLogs: isSyncDebugEnabled(),
 						};
 						logSync('send-init', {
 							length: document.getText().length,
@@ -230,7 +231,7 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider {
 						break;
 					}
 					case 'syncDebugLog': {
-						if (!isSyncDebug) {
+						if (!isSyncDebugEnabled()) {
 							break;
 						}
 						this.pushSyncDebugEntry(
@@ -298,10 +299,26 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider {
 			}
 		});
 
+		const onDidChangeConfiguration = vscode.workspace.onDidChangeConfiguration(
+			(e) => {
+				if (!e.affectsConfiguration('markdownLiveEditor.syncDebugLogs')) {
+					return;
+				}
+				const enabled = isSyncDebugEnabled();
+				const message: HostToEditorMessage = {
+					type: 'setSyncDebugLogs',
+					enabled,
+				};
+				webviewPanel.webview.postMessage(message);
+				logSync('sync-debug-config-changed', { enabled });
+			},
+		);
+
 		webviewPanel.onDidDispose(() => {
 			onDidReceiveMessage.dispose();
 			onDidChangeTextDocument.dispose();
 			onDidChangeViewState.dispose();
+			onDidChangeConfiguration.dispose();
 
 			if (this.activeWebviewPanel === webviewPanel) {
 				this.activeWebviewPanel = null;
