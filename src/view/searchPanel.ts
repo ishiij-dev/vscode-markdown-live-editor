@@ -2,6 +2,7 @@ import type { Editor } from '@milkdown/core';
 import { editorViewCtx } from '@milkdown/core';
 import { TextSelection } from '@milkdown/prose/state';
 import type { ExportMode, RequestExportMessage } from '../protocol/messages';
+import { resolveSearchPanelHotkey } from './searchPanelHotkeys';
 import {
 	clearSearchAction,
 	getSearchState,
@@ -257,36 +258,29 @@ export function mountSearchPanel(
 		}
 
 		function onKeyDown(event: KeyboardEvent): void {
-			const key = event.key.toLowerCase();
-			if ((event.metaKey || event.ctrlKey) && key === 'f') {
-				event.preventDefault();
+			const action = resolveSearchPanelHotkey({
+				key: event.key,
+				ctrlKey: event.ctrlKey,
+				metaKey: event.metaKey,
+				shiftKey: event.shiftKey,
+				isSearchOpen: panel.getAttribute('data-show') === 'true',
+				isExportOpen: panel.getAttribute('data-export') === 'true',
+			});
+			if (!action) return;
+			event.preventDefault();
+			if (action === 'openSearch') {
 				openSearchBar();
 				return;
 			}
-			if (event.key === 'F3') {
-				event.preventDefault();
-				if (event.shiftKey) {
-					onPrev();
-				} else {
-					onNext();
-				}
+			if (action === 'next') {
+				onNext();
 				return;
 			}
-			if (
-				(event.metaKey || event.ctrlKey) &&
-				key === 'g' &&
-				panel.getAttribute('data-show') === 'true'
-			) {
-				event.preventDefault();
-				if (event.shiftKey) {
-					onPrev();
-				} else {
-					onNext();
-				}
+			if (action === 'prev') {
+				onPrev();
 				return;
 			}
-			if ((event.metaKey || event.ctrlKey) && key === 'h') {
-				event.preventDefault();
+			if (action === 'toggleReplaceOrOpen') {
 				if (panel.getAttribute('data-show') === 'true') {
 					toggleReplaceBar();
 				} else {
@@ -294,22 +288,11 @@ export function mountSearchPanel(
 				}
 				return;
 			}
-			if (
-				event.key === 'Escape' &&
-				panel.getAttribute('data-export') === 'true'
-			) {
-				event.preventDefault();
+			if (action === 'closeExport') {
 				closeExportBar();
 				return;
 			}
-			if (
-				event.key === 'Escape' &&
-				panel.getAttribute('data-show') === 'true'
-			) {
-				event.preventDefault();
-				closeSearchBar();
-				return;
-			}
+			closeSearchBar();
 		}
 
 		input.addEventListener('input', onInputChange);
