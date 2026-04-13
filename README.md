@@ -55,6 +55,7 @@ ext install jishii1204.markdown-live-editor
 |---------|-------------|---------|
 | `markdownLiveEditor.customCss` | Custom CSS to inject into the editor | `""` |
 | `markdownLiveEditor.visualLineNumbers` | Show logical line numbers per rendered block in a left gutter (ignores spacing margins; paragraph soft wraps are not counted separately, while hard breaks are counted) | `false` |
+| `markdownLiveEditor.syncDebugLogs` | Enable sync debug logs and allow copying recent host/webview sync events for troubleshooting | `false` |
 
 ### Export Styled HTML
 
@@ -78,6 +79,15 @@ Because the editor runs inside a webview, it uses its own Find panel.
 | Next match | `Enter`, `F3`, `Ctrl+G` (Mac: `Cmd+G`) |
 | Previous match | `Shift+Enter`, `Shift+F3`, `Shift+Ctrl+G` (Mac: `Shift+Cmd+G`) |
 | Close Find | `Esc` |
+
+### Troubleshooting Sync/IME Issues
+
+If you see cursor jumps or unexpected sync behavior:
+
+1. Enable `markdownLiveEditor.syncDebugLogs`
+2. Reproduce once in the editor
+3. Run `Markdown Live Editor: Copy Sync Debug Info`
+4. Paste the copied output into your issue report with VS Code version, OS, `files.autoSave`, and reproduction steps
 
 ## Supported Markdown Features
 

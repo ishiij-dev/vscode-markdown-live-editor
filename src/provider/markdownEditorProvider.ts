@@ -17,14 +17,17 @@ import {
 
 export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider {
 	public static readonly viewType = 'markdownLiveEditor.editor';
+	private static readonly maxSyncDebugEntries = 500;
 
 	private static readonly textDecoder = new TextDecoder();
 	private static readonly textEncoder = new TextEncoder();
 
 	private activeWebviewPanel: vscode.WebviewPanel | null = null;
+	private activeDocumentUri: vscode.Uri | null = null;
 	private readonly styleUri: vscode.Uri;
 	private styleCache: string | null = null;
 	private syncDebugSeq = 0;
+	private syncDebugEntries: string[] = [];
 
 	constructor(
 		private readonly context: vscode.ExtensionContext,
@@ -66,6 +69,12 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider {
 				provider.showExportOptions(),
 			),
 		);
+		disposables.push(
+			vscode.commands.registerCommand(
+				'markdownLiveEditor.copySyncDebugInfo',
+				() => provider.copySyncDebugInfo(),
+			),
+		);
 
 		disposables.push(
 			vscode.commands.registerCommand(
@@ -105,6 +114,7 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider {
 
 		// Track active panel for outline and scroll commands
 		this.activeWebviewPanel = webviewPanel;
+		this.activeDocumentUri = document.uri;
 		vscode.commands.executeCommand(
 			'setContext',
 			'markdownLiveEditor.outlineAvailable',
@@ -121,11 +131,15 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider {
 		const logSync = (event: string, payload: Record<string, unknown> = {}) => {
 			if (!isSyncDebug) return;
 			this.syncDebugSeq += 1;
-			console.debug(`[MLE:host:${this.syncDebugSeq}] ${event}`, {
+			const entry = {
 				ts: Date.now(),
+				seq: this.syncDebugSeq,
+				event,
 				version: document.version,
 				...payload,
-			});
+			};
+			console.debug(`[MLE:host:${this.syncDebugSeq}] ${event}`, entry);
+			this.pushSyncDebugEntry('host', event, this.syncDebugSeq, entry);
 		};
 
 		// Handle all messages from the webview in a single listener
@@ -150,6 +164,7 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider {
 							body: document.getText(),
 							documentDirUri,
 							visualLineNumbers,
+							syncDebugLogs: isSyncDebug,
 						};
 						logSync('send-init', {
 							length: document.getText().length,
@@ -214,6 +229,19 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider {
 						}
 						break;
 					}
+					case 'syncDebugLog': {
+						if (!isSyncDebug) {
+							break;
+						}
+						this.pushSyncDebugEntry(
+							'view',
+							message.event,
+							message.seq,
+							message.payload,
+							message.ts,
+						);
+						break;
+					}
 				}
 			},
 		);
@@ -251,6 +279,7 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider {
 		const onDidChangeViewState = webviewPanel.onDidChangeViewState((e) => {
 			if (e.webviewPanel.active) {
 				this.activeWebviewPanel = webviewPanel;
+				this.activeDocumentUri = document.uri;
 				vscode.commands.executeCommand(
 					'setContext',
 					'markdownLiveEditor.outlineAvailable',
@@ -276,6 +305,7 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider {
 
 			if (this.activeWebviewPanel === webviewPanel) {
 				this.activeWebviewPanel = null;
+				this.activeDocumentUri = null;
 				this.outlineProvider.clear();
 				this.wordCountStatusBar.hide();
 				vscode.commands.executeCommand(
@@ -299,6 +329,53 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider {
 	private getCustomStyle(): string {
 		const config = vscode.workspace.getConfiguration('markdownLiveEditor');
 		return config.get<string>('customCss', '') ?? '';
+	}
+
+	public async copySyncDebugInfo(): Promise<void> {
+		const config = vscode.workspace.getConfiguration('markdownLiveEditor');
+		const enabled = config.get<boolean>('syncDebugLogs', false);
+		if (!enabled) {
+			vscode.window.showInformationMessage(
+				'Enable markdownLiveEditor.syncDebugLogs to collect sync debug info.',
+			);
+			return;
+		}
+		if (this.syncDebugEntries.length === 0) {
+			vscode.window.showInformationMessage(
+				'No sync debug logs captured yet. Reproduce once and try again.',
+			);
+			return;
+		}
+		const now = new Date().toISOString();
+		const lines: string[] = [
+			'# Markdown Live Editor Sync Debug Info',
+			`generatedAt=${now}`,
+			`activeDocument=${this.activeDocumentUri?.toString() ?? 'unknown'}`,
+			...this.syncDebugEntries,
+		];
+		await vscode.env.clipboard.writeText(lines.join('\n'));
+		vscode.window.showInformationMessage(
+			'Copied sync debug info to clipboard.',
+		);
+	}
+
+	private pushSyncDebugEntry(
+		source: 'host' | 'view',
+		event: string,
+		seq: number,
+		payload: Record<string, unknown>,
+		ts = Date.now(),
+	): void {
+		const line = `[MLE:${source}:${seq}] ${event} ${JSON.stringify({
+			ts,
+			...payload,
+		})}`;
+		this.syncDebugEntries.push(line);
+		const overflow =
+			this.syncDebugEntries.length - MarkdownEditorProvider.maxSyncDebugEntries;
+		if (overflow > 0) {
+			this.syncDebugEntries.splice(0, overflow);
+		}
 	}
 
 	public async showExportOptions(): Promise<void> {

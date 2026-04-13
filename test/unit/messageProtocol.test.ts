@@ -13,6 +13,7 @@ describe('isHostToEditorMessage', () => {
 				body: '# title',
 				documentDirUri: 'vscode-webview-resource://dir',
 				visualLineNumbers: false,
+				syncDebugLogs: false,
 			}),
 			true,
 		);
@@ -20,10 +21,7 @@ describe('isHostToEditorMessage', () => {
 			isHostToEditorMessage({ type: 'scrollToHeading', pos: 10 }),
 			true,
 		);
-		assert.equal(
-			isHostToEditorMessage({ type: 'requestHeadings' }),
-			true,
-		);
+		assert.equal(isHostToEditorMessage({ type: 'requestHeadings' }), true);
 	});
 
 	it('rejects invalid host messages', () => {
@@ -59,6 +57,17 @@ describe('isEditorToHostMessage', () => {
 			}),
 			true,
 		);
+		assert.equal(
+			isEditorToHostMessage({
+				type: 'syncDebugLog',
+				source: 'view',
+				event: 'host-update-queued',
+				seq: 3,
+				ts: 1_234_567_890,
+				payload: { length: 42 },
+			}),
+			true,
+		);
 	});
 
 	it('rejects invalid editor messages', () => {
@@ -75,6 +84,17 @@ describe('isEditorToHostMessage', () => {
 				words: 10,
 				characters: 42,
 				selection: { words: '2', characters: 8 },
+			}),
+			false,
+		);
+		assert.equal(
+			isEditorToHostMessage({
+				type: 'syncDebugLog',
+				source: 'host',
+				event: 'x',
+				seq: 1,
+				ts: 1,
+				payload: {},
 			}),
 			false,
 		);

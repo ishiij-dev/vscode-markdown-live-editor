@@ -96,8 +96,10 @@ const UPDATE_DELAY_MS = 300;
 let disposeSearchUi: (() => void) | null = null;
 const SYNC_DEBUG_STORAGE_KEY = 'markdownLiveEditor.syncDebug';
 let visualLineNumbersEnabled = false;
+let syncDebugLogsEnabled = false;
 
 function isSyncDebugEnabled(): boolean {
+	if (syncDebugLogsEnabled) return true;
 	try {
 		return window.localStorage.getItem(SYNC_DEBUG_STORAGE_KEY) === '1';
 	} catch {
@@ -108,9 +110,18 @@ function isSyncDebugEnabled(): boolean {
 function syncDebug(event: string, payload: Record<string, unknown> = {}): void {
 	if (!isSyncDebugEnabled()) return;
 	syncDebugSeq += 1;
+	const ts = Date.now();
 	console.debug(`[MLE:view:${syncDebugSeq}] ${event}`, {
-		ts: Date.now(),
+		ts,
 		...payload,
+	});
+	vscode.postMessage({
+		type: 'syncDebugLog',
+		source: 'view',
+		event,
+		seq: syncDebugSeq,
+		ts,
+		payload,
 	});
 }
 
@@ -512,6 +523,15 @@ window.addEventListener('message', (event) => {
 			}
 			if (message.documentDirUri) {
 				setDocumentDirUri(message.documentDirUri);
+			}
+			syncDebugLogsEnabled = message.syncDebugLogs;
+			try {
+				window.localStorage.setItem(
+					SYNC_DEBUG_STORAGE_KEY,
+					syncDebugLogsEnabled ? '1' : '0',
+				);
+			} catch {
+				// Ignore localStorage failures in constrained webview environments.
 			}
 			visualLineNumbersEnabled = message.visualLineNumbers;
 			visualLineNumbersController.updateEnabled(visualLineNumbersEnabled);

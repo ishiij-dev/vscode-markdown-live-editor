@@ -23,6 +23,7 @@ export interface InitMessage {
 	body: string;
 	documentDirUri: string;
 	visualLineNumbers: boolean;
+	syncDebugLogs: boolean;
 }
 
 export interface ScrollToHeadingMessage {
@@ -70,6 +71,15 @@ export interface RequestExportMessage {
 	mode: ExportMode;
 }
 
+export interface SyncDebugLogMessage {
+	type: 'syncDebugLog';
+	source: 'view';
+	event: string;
+	seq: number;
+	ts: number;
+	payload: Record<string, unknown>;
+}
+
 export type HostToEditorMessage =
 	| InitMessage
 	| RequestHeadingsMessage
@@ -84,7 +94,8 @@ export type EditorToHostMessage =
 	| UpdateMessage
 	| WordCountMessage
 	| ExportHtmlMessage
-	| RequestExportMessage;
+	| RequestExportMessage
+	| SyncDebugLogMessage;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
 	return typeof value === 'object' && value !== null;
@@ -115,7 +126,8 @@ export function isHostToEditorMessage(
 			return (
 				typeof value.body === 'string' &&
 				typeof value.documentDirUri === 'string' &&
-				typeof value.visualLineNumbers === 'boolean'
+				typeof value.visualLineNumbers === 'boolean' &&
+				typeof value.syncDebugLogs === 'boolean'
 			);
 		case 'update':
 			return typeof value.body === 'string';
@@ -163,6 +175,14 @@ export function isEditorToHostMessage(
 			return (
 				typeof value.mode === 'string' &&
 				(value.mode === 'clipboard' || value.mode === 'file')
+			);
+		case 'syncDebugLog':
+			return (
+				value.source === 'view' &&
+				typeof value.event === 'string' &&
+				typeof value.seq === 'number' &&
+				typeof value.ts === 'number' &&
+				isRecord(value.payload)
 			);
 		default:
 			return false;

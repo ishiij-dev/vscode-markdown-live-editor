@@ -1,159 +1,169 @@
 {
-  "name": "markdown-live-editor",
-  "displayName": "Markdown Live Editor",
-  "description": "WYSIWYG Markdown editor for VS Code",
-  "version": "0.6.0",
-  "publisher": "jishii1204",
-  "icon": "icon.png",
-  "license": "MIT",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/jishii1204/vscode-markdown-live"
-  },
-  "homepage": "https://github.com/jishii1204/vscode-markdown-live#readme",
-  "bugs": {
-    "url": "https://github.com/jishii1204/vscode-markdown-live/issues"
-  },
-  "engines": {
-    "vscode": "^1.75.0"
-  },
-  "categories": [
-    "Other"
-  ],
-  "keywords": [
-    "markdown",
-    "wysiwyg",
-    "editor",
-    "mermaid",
-    "katex"
-  ],
-  "galleryBanner": {
-    "color": "#1e1e1e",
-    "theme": "dark"
-  },
-  "activationEvents": [],
-  "main": "./dist/extension.js",
-  "browser": "./dist/web/extension.js",
-  "contributes": {
-    "customEditors": [
-      {
-        "viewType": "markdownLiveEditor.editor",
-        "displayName": "Markdown Live Editor",
-        "selector": [
-          {
-            "filenamePattern": "*.md"
-          }
-        ],
-        "priority": "option"
-      }
-    ],
-    "views": {
-      "explorer": [
-        {
-          "id": "markdownLiveEditor.outline",
-          "name": "Markdown Outline",
-          "when": "markdownLiveEditor.outlineAvailable",
-          "icon": "$(list-tree)"
-        }
-      ]
-    },
-    "commands": [
-      {
-        "command": "markdownLiveEditor.openEditor",
-        "title": "Open with Markdown Live Editor",
-        "category": "Markdown Live Editor"
-      },
-      {
-        "command": "markdownLiveEditor.exportHtml",
-        "title": "Markdown Live Editor: Export Styled HTML",
-        "category": "Markdown Live Editor"
-      },
-      {
-        "command": "markdownLiveEditor.scrollToHeading",
-        "title": "Scroll to Heading",
-        "category": "Markdown Live Editor"
-      }
-    ],
-    "keybindings": [
-      {
-        "key": "ctrl+shift+alt+m",
-        "command": "markdownLiveEditor.openEditor",
-        "mac": "cmd+shift+alt+m",
-        "when": "editorTextFocus && editorLangId == markdown"
-      }
-    ],
-    "menus": {
-      "explorer/context": [
-        {
-          "when": "resourceLangId == markdown",
-          "command": "markdownLiveEditor.openEditor",
-          "group": "navigation"
-        }
-      ],
-      "editor/title/context": [
-        {
-          "when": "resourceLangId == markdown",
-          "command": "markdownLiveEditor.openEditor",
-          "group": "1_open"
-        }
-      ]
-    },
-    "configuration": {
-      "title": "Markdown Live Editor",
-      "properties": {
-        "markdownLiveEditor.customCss": {
-          "type": "string",
-          "default": "",
-          "description": "Custom CSS to inject into the Markdown Live Editor."
-        },
-        "markdownLiveEditor.visualLineNumbers": {
-          "type": "boolean",
-          "default": false,
-          "description": "Show logical line numbers for each rendered block in a left gutter (ignores visual spacing like margins)."
-        }
-      }
-    }
-  },
-  "scripts": {
-    "vscode:prepublish": "npm run package",
-    "compile": "npm run check-types && npm run lint && node esbuild.js",
-    "watch": "npm-run-all -p watch:*",
-    "watch:esbuild": "node esbuild.js --watch",
-    "watch:tsc": "tsc --noEmit --watch --project tsconfig.json",
-    "package": "npm run check-types && npm run lint && node esbuild.js --production",
-    "check-types": "tsc --noEmit",
-    "lint": "biome check src/ esbuild.js",
-    "lint:fix": "biome check --write src/ esbuild.js",
-    "test:prepare": "tsc -p tsconfig.test.json",
-    "test:unit": "npm run test:prepare && node --test .test-dist/test/unit/*.test.js",
-    "test:smoke": "npm run test:prepare && node --test .test-dist/test/smoke/*.test.js",
-    "test:all": "npm run test:unit && npm run test:smoke"
-  },
-  "devDependencies": {
-    "@biomejs/biome": "^2.4.11",
-    "@types/katex": "^0.16.8",
-    "@types/node": "^25.6.0",
-    "@types/vscode": "1.75.0",
-    "@vscode/vsce": "^3.7.1",
-    "esbuild": "^0.28.0",
-    "npm-run-all2": "^8.0.4",
-    "type-fest": "^5.5.0",
-    "typescript": "^6.0.2"
-  },
-  "dependencies": {
-    "@milkdown/components": "^7.20.0",
-    "@milkdown/core": "^7.20.0",
-    "@milkdown/ctx": "^7.20.0",
-    "@milkdown/plugin-slash": "^7.20.0",
-    "@milkdown/plugin-tooltip": "^7.18.0",
-    "@milkdown/preset-commonmark": "^7.18.0",
-    "@milkdown/preset-gfm": "^7.18.0",
-    "@milkdown/prose": "^7.18.0",
-    "highlight.js": "^11.11.1",
-    "katex": "^0.16.45",
-    "mermaid": "^11.14.0",
-    "remark-emoji": "^5.0.2",
-    "remark-frontmatter": "^5.0.0",
-    "remark-math": "^6.0.0"
-  }
+	"name": "markdown-live-editor",
+	"displayName": "Markdown Live Editor",
+	"description": "WYSIWYG Markdown editor for VS Code",
+	"version": "0.6.0",
+	"publisher": "jishii1204",
+	"icon": "icon.png",
+	"license": "MIT",
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/jishii1204/vscode-markdown-live"
+	},
+	"homepage": "https://github.com/jishii1204/vscode-markdown-live#readme",
+	"bugs": {
+		"url": "https://github.com/jishii1204/vscode-markdown-live/issues"
+	},
+	"engines": {
+		"vscode": "^1.75.0"
+	},
+	"categories": [
+		"Other"
+	],
+	"keywords": [
+		"markdown",
+		"wysiwyg",
+		"editor",
+		"mermaid",
+		"katex"
+	],
+	"galleryBanner": {
+		"color": "#1e1e1e",
+		"theme": "dark"
+	},
+	"activationEvents": [],
+	"main": "./dist/extension.js",
+	"browser": "./dist/web/extension.js",
+	"contributes": {
+		"customEditors": [
+			{
+				"viewType": "markdownLiveEditor.editor",
+				"displayName": "Markdown Live Editor",
+				"selector": [
+					{
+						"filenamePattern": "*.md"
+					}
+				],
+				"priority": "option"
+			}
+		],
+		"views": {
+			"explorer": [
+				{
+					"id": "markdownLiveEditor.outline",
+					"name": "Markdown Outline",
+					"when": "markdownLiveEditor.outlineAvailable",
+					"icon": "$(list-tree)"
+				}
+			]
+		},
+		"commands": [
+			{
+				"command": "markdownLiveEditor.openEditor",
+				"title": "Open with Markdown Live Editor",
+				"category": "Markdown Live Editor"
+			},
+			{
+				"command": "markdownLiveEditor.exportHtml",
+				"title": "Markdown Live Editor: Export Styled HTML",
+				"category": "Markdown Live Editor"
+			},
+			{
+				"command": "markdownLiveEditor.scrollToHeading",
+				"title": "Scroll to Heading",
+				"category": "Markdown Live Editor"
+			},
+			{
+				"command": "markdownLiveEditor.copySyncDebugInfo",
+				"title": "Markdown Live Editor: Copy Sync Debug Info",
+				"category": "Markdown Live Editor"
+			}
+		],
+		"keybindings": [
+			{
+				"key": "ctrl+shift+alt+m",
+				"command": "markdownLiveEditor.openEditor",
+				"mac": "cmd+shift+alt+m",
+				"when": "editorTextFocus && editorLangId == markdown"
+			}
+		],
+		"menus": {
+			"explorer/context": [
+				{
+					"when": "resourceLangId == markdown",
+					"command": "markdownLiveEditor.openEditor",
+					"group": "navigation"
+				}
+			],
+			"editor/title/context": [
+				{
+					"when": "resourceLangId == markdown",
+					"command": "markdownLiveEditor.openEditor",
+					"group": "1_open"
+				}
+			]
+		},
+		"configuration": {
+			"title": "Markdown Live Editor",
+			"properties": {
+				"markdownLiveEditor.customCss": {
+					"type": "string",
+					"default": "",
+					"description": "Custom CSS to inject into the Markdown Live Editor."
+				},
+				"markdownLiveEditor.visualLineNumbers": {
+					"type": "boolean",
+					"default": false,
+					"description": "Show logical line numbers for each rendered block in a left gutter (ignores visual spacing like margins)."
+				},
+				"markdownLiveEditor.syncDebugLogs": {
+					"type": "boolean",
+					"default": false,
+					"description": "Enable sync debug logs and allow copying recent host/webview sync events for troubleshooting."
+				}
+			}
+		}
+	},
+	"scripts": {
+		"vscode:prepublish": "npm run package",
+		"compile": "npm run check-types && npm run lint && node esbuild.js",
+		"watch": "npm-run-all -p watch:*",
+		"watch:esbuild": "node esbuild.js --watch",
+		"watch:tsc": "tsc --noEmit --watch --project tsconfig.json",
+		"package": "npm run check-types && npm run lint && node esbuild.js --production",
+		"check-types": "tsc --noEmit",
+		"lint": "biome check src/ esbuild.js",
+		"lint:fix": "biome check --write src/ esbuild.js",
+		"test:prepare": "tsc -p tsconfig.test.json",
+		"test:unit": "npm run test:prepare && node --test .test-dist/test/unit/*.test.js",
+		"test:smoke": "npm run test:prepare && node --test .test-dist/test/smoke/*.test.js",
+		"test:all": "npm run test:unit && npm run test:smoke"
+	},
+	"devDependencies": {
+		"@biomejs/biome": "^2.4.11",
+		"@types/katex": "^0.16.8",
+		"@types/node": "^25.6.0",
+		"@types/vscode": "1.75.0",
+		"@vscode/vsce": "^3.7.1",
+		"esbuild": "^0.28.0",
+		"npm-run-all2": "^8.0.4",
+		"type-fest": "^5.5.0",
+		"typescript": "^6.0.2"
+	},
+	"dependencies": {
+		"@milkdown/components": "^7.20.0",
+		"@milkdown/core": "^7.20.0",
+		"@milkdown/ctx": "^7.20.0",
+		"@milkdown/plugin-slash": "^7.20.0",
+		"@milkdown/plugin-tooltip": "^7.18.0",
+		"@milkdown/preset-commonmark": "^7.18.0",
+		"@milkdown/preset-gfm": "^7.18.0",
+		"@milkdown/prose": "^7.18.0",
+		"highlight.js": "^11.11.1",
+		"katex": "^0.16.45",
+		"mermaid": "^11.14.0",
+		"remark-emoji": "^5.0.2",
+		"remark-frontmatter": "^5.0.0",
+		"remark-math": "^6.0.0"
+	}
 }
