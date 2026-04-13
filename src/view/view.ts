@@ -14,24 +14,19 @@ import { Plugin, TextSelection } from '@milkdown/prose/state';
 import { $prose } from '@milkdown/utils';
 import {
 	type EditorToHostMessage,
-	type ExportMode,
 	type HostToEditorMessage,
 	isHostToEditorMessage,
 	type RequestExportHtmlMessage,
-	type RequestExportMessage,
 } from '../protocol/messages';
+import { hashText } from '../shared/hash';
 import { alertPlugin } from './alertPlugin';
 import { autoPairPlugin } from './autoPairPlugin';
 import { codeBlockPlugin, highlightPlugin } from './codeBlockPlugin';
 import {
 	cleanupTableBr,
-	countLogicalTextLines,
-	countParagraphRowsFromHardBreaks,
 	countText,
-	dedupeNearbyRowTops,
 	type HeadingData,
 	headingsEqual,
-	shouldMergeNearbyTop,
 	type WordCountData,
 } from './editorTestUtils';
 import { emojiPlugin } from './emojiPlugin';
@@ -48,15 +43,8 @@ import {
 	mathViewPlugin,
 	remarkMathPlugin,
 } from './katexPlugin';
-import {
-	clearSearchAction,
-	getSearchState,
-	nextSearchMatchAction,
-	prevSearchMatchAction,
-	searchPlugin,
-	setSearchQueryAction,
-	setSearchStateChangeListener,
-} from './searchPlugin';
+import { mountSearchPanel } from './searchPanel';
+import { searchPlugin } from './searchPlugin';
 import { configureSlash, slash, slashKeyboardPlugin } from './slashPlugin';
 import { configureTableBlock, tableBlock } from './tableBlockPlugin';
 import {
@@ -65,6 +53,7 @@ import {
 	linkTooltipPlugin,
 	selectionToolbar,
 } from './toolbarPlugin';
+import { createVisualLineNumbersController } from './visualLineNumbers';
 
 declare function acquireVsCodeApi(): {
 	postMessage(message: EditorToHostMessage): void;
@@ -107,8 +96,6 @@ const UPDATE_DELAY_MS = 300;
 let disposeSearchUi: (() => void) | null = null;
 const SYNC_DEBUG_STORAGE_KEY = 'markdownLiveEditor.syncDebug';
 let visualLineNumbersEnabled = false;
-let visualLineGutter: HTMLDivElement | null = null;
-let visualLineRenderQueued = false;
 
 function isSyncDebugEnabled(): boolean {
 	try {
@@ -116,15 +103,6 @@ function isSyncDebugEnabled(): boolean {
 	} catch {
 		return false;
 	}
-}
-
-function hashText(value: string): number {
-	let hash = 2166136261;
-	for (let i = 0; i < value.length; i += 1) {
-		hash ^= value.charCodeAt(i);
-		hash = Math.imul(hash, 16777619);
-	}
-	return hash >>> 0;
 }
 
 function syncDebug(event: string, payload: Record<string, unknown> = {}): void {
@@ -282,681 +260,9 @@ const wordCountPlugin = $prose((_ctx) => {
 	});
 });
 
-function ensureVisualLineGutter(): HTMLDivElement {
-	if (visualLineGutter) {
-		return visualLineGutter;
-	}
-	const gutter = document.createElement('div');
-	gutter.className = 'visual-line-gutter';
-	gutter.setAttribute('data-show', 'false');
-	document.body.appendChild(gutter);
-	visualLineGutter = gutter;
-	return gutter;
-}
-
-function hideVisualLineNumbers(): void {
-	document.body.setAttribute('data-visual-line-numbers', 'false');
-	if (!visualLineGutter) return;
-	visualLineGutter.setAttribute('data-show', 'false');
-}
-
-function isLogicalLineBlock(element: HTMLElement): boolean {
-	if (element.classList.contains('heading-fold-hidden')) return false;
-	if (element.tagName === 'HR') return false;
-	if (element.tagName === 'P') {
-		return element.textContent?.trim().length !== 0;
-	}
-	return true;
-}
-
-function collectListLineItems(list: HTMLElement): HTMLElement[] {
-	const rows: HTMLElement[] = [];
-	for (const child of Array.from(list.children)) {
-		if (!(child instanceof HTMLElement)) continue;
-		if (child.tagName !== 'LI') continue;
-		if (!child.classList.contains('heading-fold-hidden')) {
-			rows.push(child);
-		}
-		for (const nested of Array.from(child.children)) {
-			if (!(nested instanceof HTMLElement)) continue;
-			if (nested.tagName === 'UL' || nested.tagName === 'OL') {
-				rows.push(...collectListLineItems(nested));
-			}
-		}
-	}
-	return rows;
-}
-
-function collectTableLineItems(table: HTMLElement): HTMLElement[] {
-	const htmlTable = table as HTMLTableElement;
-	const rowsFromApi = Array.from(htmlTable.rows).filter(
-		(row): row is HTMLTableRowElement => row instanceof HTMLTableRowElement,
-	);
-	if (rowsFromApi.length > 0) {
-		return rowsFromApi.filter(
-			(row) => !row.classList.contains('heading-fold-hidden'),
-		);
-	}
-	return Array.from(table.querySelectorAll('tr')).filter(
-		(row): row is HTMLTableRowElement =>
-			row instanceof HTMLTableRowElement &&
-			!row.classList.contains('heading-fold-hidden'),
-	);
-}
-
-function findRenderableTable(container: HTMLElement): HTMLElement | null {
-	const preferred = container.querySelector('table.children');
-	if (preferred instanceof HTMLElement) {
-		return preferred;
-	}
-
-	const tables = Array.from(container.querySelectorAll('table')).filter(
-		(table): table is HTMLTableElement => table instanceof HTMLTableElement,
-	);
-	if (tables.length === 0) {
-		return null;
-	}
-
-	return tables.reduce((best, current) =>
-		current.rows.length > best.rows.length ? current : best,
-	);
-}
-
-function collectLogicalLineBlocks(container: HTMLElement): HTMLElement[] {
-	const blocks: HTMLElement[] = [];
-	for (const child of Array.from(container.children)) {
-		if (!(child instanceof HTMLElement)) continue;
-		if (child.classList.contains('heading-fold-hidden')) continue;
-
-		if (child.tagName === 'UL' || child.tagName === 'OL') {
-			blocks.push(...collectListLineItems(child));
-			continue;
-		}
-		if (child.tagName === 'TABLE') {
-			blocks.push(...collectTableLineItems(child));
-			continue;
-		}
-		const nestedTable = findRenderableTable(child);
-		if (nestedTable instanceof HTMLElement) {
-			blocks.push(...collectTableLineItems(nestedTable));
-			continue;
-		}
-		if (child.tagName === 'BLOCKQUOTE') {
-			blocks.push(...collectLogicalLineBlocks(child));
-			continue;
-		}
-		blocks.push(child);
-	}
-	return blocks.filter(isLogicalLineBlock);
-}
-
-function collectCodeBlockVisualRows(
-	block: HTMLElement,
-	proseTop: number,
-): number[] {
-	const code = block.querySelector('code');
-	if (!(code instanceof HTMLElement)) {
-		const rect = block.getBoundingClientRect();
-		return [rect.top - proseTop];
-	}
-
-	const range = document.createRange();
-	const walker = document.createTreeWalker(code, NodeFilter.SHOW_TEXT);
-	const tops: number[] = [];
-
-	let current = walker.nextNode();
-	while (current) {
-		if (
-			current instanceof Text &&
-			current.nodeValue &&
-			current.nodeValue.length > 0
-		) {
-			range.selectNodeContents(current);
-			const rects = Array.from(range.getClientRects());
-			for (const rect of rects) {
-				if (rect.height < 1) continue;
-				tops.push(rect.top - proseTop);
-			}
-		}
-		current = walker.nextNode();
-	}
-
-	if (tops.length === 0) {
-		const rect = block.getBoundingClientRect();
-		return [rect.top - proseTop];
-	}
-
-	return dedupeNearbyRowTops(tops, 1.5);
-}
-
-function collectParagraphVisualRows(
-	block: HTMLElement,
-	proseTop: number,
-): number[] {
-	const rect = block.getBoundingClientRect();
-	const style = window.getComputedStyle(block);
-	const lineHeightPx = Number.parseFloat(style.lineHeight);
-	const lineHeight = Number.isFinite(lineHeightPx) ? lineHeightPx : 22;
-	const hardBreakCount = block.querySelectorAll('br').length;
-	const lineCount = countParagraphRowsFromHardBreaks(hardBreakCount);
-
-	const rows: number[] = [];
-	for (let i = 0; i < lineCount; i += 1) {
-		rows.push(rect.top - proseTop + i * lineHeight);
-	}
-	return rows;
-}
-
-function collectVisualRowsForBlock(
-	block: HTMLElement,
-	proseTop: number,
-): number[] {
-	if (block.classList.contains('frontmatter-block')) {
-		const header = block.querySelector('.frontmatter-header');
-		const textarea = block.querySelector(
-			'textarea.frontmatter-content',
-		) as HTMLTextAreaElement | null;
-		const blockRows: number[] = [];
-
-		if (header instanceof HTMLElement) {
-			const headerRect = header.getBoundingClientRect();
-			blockRows.push(headerRect.top - proseTop);
-		}
-
-		if (
-			textarea &&
-			textarea.classList.contains('frontmatter-content--visible')
-		) {
-			const textRect = textarea.getBoundingClientRect();
-			const style = window.getComputedStyle(textarea);
-			const lineHeightPx = Number.parseFloat(style.lineHeight);
-			const lineHeight = Number.isFinite(lineHeightPx) ? lineHeightPx : 20;
-			const lineCount = countLogicalTextLines(textarea.value);
-			for (let i = 0; i < lineCount; i += 1) {
-				blockRows.push(textRect.top - proseTop + i * lineHeight);
-			}
-		}
-
-		if (blockRows.length > 0) {
-			return blockRows;
-		}
-	}
-
-	if (block.tagName === 'PRE') {
-		return collectCodeBlockVisualRows(block, proseTop);
-	}
-	if (block.tagName === 'P') {
-		return collectParagraphVisualRows(block, proseTop);
-	}
-	const rect = block.getBoundingClientRect();
-	return [rect.top - proseTop];
-}
-
-function renderVisualLineNumbers(): void {
-	visualLineRenderQueued = false;
-	if (!visualLineNumbersEnabled) {
-		hideVisualLineNumbers();
-		return;
-	}
-
-	const prose = document.querySelector<HTMLElement>('.ProseMirror');
-	if (!prose) {
-		hideVisualLineNumbers();
-		return;
-	}
-
-	const proseRect = prose.getBoundingClientRect();
-	const visibleTop = Math.max(0, proseRect.top);
-	const visibleBottom = Math.min(window.innerHeight, proseRect.bottom);
-	const visibleHeight = Math.max(0, visibleBottom - visibleTop);
-	if (visibleHeight < 4) {
-		hideVisualLineNumbers();
-		return;
-	}
-
-	const blocks = collectLogicalLineBlocks(prose);
-
-	const gutter = ensureVisualLineGutter();
-	gutter.style.top = `${visibleTop}px`;
-	gutter.style.height = `${visibleHeight}px`;
-	gutter.style.left = `${Math.max(4, proseRect.left - 46)}px`;
-
-	const fragment = document.createDocumentFragment();
-	let visualLineNumber = 1;
-	let lastCountedTop = Number.NEGATIVE_INFINITY;
-	for (const block of blocks) {
-		const rect = block.getBoundingClientRect();
-		if (rect.height < 1) continue;
-		const rows = collectVisualRowsForBlock(block, proseRect.top);
-		for (const y of rows) {
-			const absoluteTop = proseRect.top + y;
-			// Merge near-identical tops that come from inline widget fragments
-			// (for example, footnote/math internals) and treat them as one visual row.
-			if (shouldMergeNearbyTop(absoluteTop, lastCountedTop, 4)) {
-				continue;
-			}
-			lastCountedTop = absoluteTop;
-			if (
-				absoluteTop + 2 >= visibleTop - 2 &&
-				absoluteTop - 2 <= visibleBottom + 2
-			) {
-				const row = document.createElement('div');
-				row.className = 'visual-line-number visual-line-number-primary';
-				row.style.top = `${Math.round(absoluteTop - visibleTop)}px`;
-				row.textContent = `${visualLineNumber}`;
-				fragment.appendChild(row);
-			}
-			visualLineNumber += 1;
-		}
-	}
-
-	gutter.textContent = '';
-	gutter.appendChild(fragment);
-	gutter.setAttribute('data-show', 'true');
-	document.body.setAttribute('data-visual-line-numbers', 'true');
-}
-
-function scheduleVisualLineNumbersRender(): void {
-	if (visualLineRenderQueued) return;
-	visualLineRenderQueued = true;
-	requestAnimationFrame(renderVisualLineNumbers);
-}
-
-function updateVisualLineNumbers(enabled: boolean): void {
-	visualLineNumbersEnabled = enabled;
-	if (!enabled) {
-		hideVisualLineNumbers();
-		return;
-	}
-	scheduleVisualLineNumbersRender();
-}
-
-const visualLineNumbersPlugin = $prose((_ctx) => {
-	return new Plugin({
-		view() {
-			const onViewportChange = () => {
-				if (!visualLineNumbersEnabled) return;
-				scheduleVisualLineNumbersRender();
-			};
-			window.addEventListener('scroll', onViewportChange, { passive: true });
-			window.addEventListener('resize', onViewportChange);
-			return {
-				update(view, prevState) {
-					if (isInitializing || isUpdatingFromExtension) return;
-					const docChanged = !view.state.doc.eq(prevState.doc);
-					const selChanged = !view.state.selection.eq(prevState.selection);
-					if (!docChanged && !selChanged) return;
-					if (!visualLineNumbersEnabled) return;
-					scheduleVisualLineNumbersRender();
-				},
-				destroy() {
-					window.removeEventListener('scroll', onViewportChange);
-					window.removeEventListener('resize', onViewportChange);
-					hideVisualLineNumbers();
-				},
-			};
-		},
-	});
+const visualLineNumbersController = createVisualLineNumbersController({
+	isUpdateBlocked: () => isInitializing || isUpdatingFromExtension,
 });
-
-function setupSearchUi(instance: Editor): void {
-	if (disposeSearchUi) {
-		disposeSearchUi();
-		disposeSearchUi = null;
-	}
-
-	instance.action((ctx) => {
-		const view = ctx.get(editorViewCtx);
-		const onEditorFocusOut = () => {
-			setTimeout(maybeApplyPendingRemoteUpdate, 0);
-		};
-		view.dom.addEventListener('focusout', onEditorFocusOut);
-		const panel = document.createElement('div');
-		panel.className = 'search-panel';
-		panel.setAttribute('data-show', 'false');
-		panel.setAttribute('data-replace', 'false');
-		panel.setAttribute('data-export', 'false');
-		panel.innerHTML = `
-			<div class="search-row">
-				<input class="search-input" type="text" placeholder="Find" />
-				<span class="search-count">0/0</span>
-				<button class="search-btn search-prev" title="Previous">↑</button>
-				<button class="search-btn search-next" title="Next">↓</button>
-				<button class="search-btn search-toggle-replace" title="Toggle Replace">↧</button>
-				<button
-					class="search-btn search-toggle-export"
-					title="Export current view as styled HTML"
-					aria-label="Export current view as styled HTML"
-				>
-					⤴
-				</button>
-				<button class="search-btn search-close" title="Close">✕</button>
-			</div>
-			<div class="replace-row">
-				<input class="search-input replace-input" type="text" placeholder="Replace" />
-				<button class="search-btn search-replace" title="Replace">Replace</button>
-				<button class="search-btn search-replace-all" title="Replace All">All</button>
-			</div>
-			<div class="export-row">
-				<span class="export-label">Export styled HTML</span>
-				<div class="export-actions">
-					<button
-						class="search-btn search-export-clipboard"
-						title="Copy styled HTML to clipboard"
-						aria-label="Copy styled HTML to clipboard"
-					>
-						Copy
-					</button>
-					<button
-						class="search-btn search-export-file"
-						title="Export styled HTML file"
-						aria-label="Export styled HTML file"
-					>
-						Export
-					</button>
-				</div>
-			</div>
-		`;
-		document.body.appendChild(panel);
-
-		const input = panel.querySelector('.search-input') as HTMLInputElement;
-		const replaceInput = panel.querySelector(
-			'.replace-input',
-		) as HTMLInputElement;
-		const count = panel.querySelector('.search-count') as HTMLSpanElement;
-		const nextBtn = panel.querySelector('.search-next') as HTMLButtonElement;
-		const prevBtn = panel.querySelector('.search-prev') as HTMLButtonElement;
-		const toggleReplaceBtn = panel.querySelector(
-			'.search-toggle-replace',
-		) as HTMLButtonElement;
-		const replaceBtn = panel.querySelector(
-			'.search-replace',
-		) as HTMLButtonElement;
-		const replaceAllBtn = panel.querySelector(
-			'.search-replace-all',
-		) as HTMLButtonElement;
-		const closeBtn = panel.querySelector('.search-close') as HTMLButtonElement;
-		const exportToggleBtn = panel.querySelector(
-			'.search-toggle-export',
-		) as HTMLButtonElement;
-		const exportClipboardBtn = panel.querySelector(
-			'.search-export-clipboard',
-		) as HTMLButtonElement;
-		const exportFileBtn = panel.querySelector(
-			'.search-export-file',
-		) as HTMLButtonElement;
-
-		function updateCount(): void {
-			const state = getSearchState(view);
-			const noResults = state.query.length > 0 && state.matches.length === 0;
-			input.setAttribute('data-no-results', noResults ? 'true' : 'false');
-			if (!state.query || state.matches.length === 0) {
-				count.textContent = '0/0';
-				return;
-			}
-			count.textContent = `${state.activeIndex + 1}/${state.matches.length}`;
-		}
-
-		function revealActiveMatch(): void {
-			const state = getSearchState(view);
-			if (state.activeIndex < 0 || state.activeIndex >= state.matches.length) {
-				return;
-			}
-			const match = state.matches[state.activeIndex];
-			const { from, to } = view.state.selection;
-			if (from === match.from && to === match.to) {
-				return;
-			}
-			view.dispatch(
-				view.state.tr
-					.setSelection(
-						TextSelection.create(view.state.doc, match.from, match.to),
-					)
-					.scrollIntoView(),
-			);
-			// Keep the active match around the center of the viewport for
-			// smoother keyboard navigation across many results.
-			requestAnimationFrame(() => {
-				const dom = view.nodeDOM(match.from);
-				if (dom instanceof HTMLElement) {
-					dom.scrollIntoView({ block: 'center', behavior: 'smooth' });
-					return;
-				}
-				if (dom instanceof Text && dom.parentElement) {
-					dom.parentElement.scrollIntoView({
-						block: 'center',
-						behavior: 'smooth',
-					});
-				}
-			});
-		}
-
-		function openSearchBar(): void {
-			closeExportBar();
-			panel.setAttribute('data-show', 'true');
-			const selected = view.state.doc.textBetween(
-				view.state.selection.from,
-				view.state.selection.to,
-				'\n',
-			);
-			if (selected.trim().length > 0) {
-				input.value = selected;
-				setSearchQueryAction(view, selected);
-				revealActiveMatch();
-				updateCount();
-			} else {
-				updateCount();
-			}
-			input.focus();
-			input.select();
-		}
-
-		function openReplaceBar(): void {
-			openSearchBar();
-			panel.setAttribute('data-replace', 'true');
-			replaceInput.focus();
-			replaceInput.select();
-		}
-
-		function closeSearchBar(): void {
-			panel.setAttribute('data-show', 'false');
-			panel.setAttribute('data-replace', 'false');
-			closeExportBar();
-			input.value = '';
-			replaceInput.value = '';
-			clearSearchAction(view);
-			updateCount();
-			view.focus();
-		}
-
-		function toggleReplaceBar(): void {
-			const showReplace = panel.getAttribute('data-replace') === 'true';
-			panel.setAttribute('data-replace', showReplace ? 'false' : 'true');
-			if (showReplace) {
-				input.focus();
-				return;
-			}
-			replaceInput.focus();
-			replaceInput.select();
-		}
-
-		function closeExportBar(): void {
-			panel.setAttribute('data-export', 'false');
-		}
-
-		function toggleExportBar(): void {
-			const showExport = panel.getAttribute('data-export') === 'true';
-			panel.setAttribute('data-export', showExport ? 'false' : 'true');
-			if (!showExport) {
-				exportClipboardBtn.focus();
-			}
-		}
-
-		function sendExportRequest(mode: ExportMode): void {
-			const message: RequestExportMessage = {
-				type: 'requestExport',
-				mode,
-			};
-			vscode.postMessage(message);
-			closeExportBar();
-		}
-
-		function onInputChange(): void {
-			setSearchQueryAction(view, input.value);
-			revealActiveMatch();
-			updateCount();
-		}
-
-		function onNext(): void {
-			nextSearchMatchAction(view);
-			revealActiveMatch();
-			updateCount();
-		}
-
-		function onPrev(): void {
-			prevSearchMatchAction(view);
-			revealActiveMatch();
-			updateCount();
-		}
-
-		function onReplace(): void {
-			const state = getSearchState(view);
-			if (state.matches.length === 0) {
-				return;
-			}
-			const activeIndex = Math.max(0, state.activeIndex);
-			const match = state.matches[activeIndex];
-			view.dispatch(
-				view.state.tr.insertText(replaceInput.value, match.from, match.to),
-			);
-			revealActiveMatch();
-			updateCount();
-		}
-
-		function onReplaceAll(): void {
-			const state = getSearchState(view);
-			if (state.matches.length === 0) {
-				return;
-			}
-			let tr = view.state.tr;
-			for (let i = state.matches.length - 1; i >= 0; i--) {
-				const match = state.matches[i];
-				tr = tr.insertText(replaceInput.value, match.from, match.to);
-			}
-			view.dispatch(tr);
-			revealActiveMatch();
-			updateCount();
-		}
-
-		function onKeyDown(event: KeyboardEvent): void {
-			const key = event.key.toLowerCase();
-			if ((event.metaKey || event.ctrlKey) && key === 'f') {
-				event.preventDefault();
-				openSearchBar();
-				return;
-			}
-			if (event.key === 'F3') {
-				event.preventDefault();
-				if (event.shiftKey) {
-					onPrev();
-				} else {
-					onNext();
-				}
-				return;
-			}
-			if (
-				(event.metaKey || event.ctrlKey) &&
-				key === 'g' &&
-				panel.getAttribute('data-show') === 'true'
-			) {
-				event.preventDefault();
-				if (event.shiftKey) {
-					onPrev();
-				} else {
-					onNext();
-				}
-				return;
-			}
-			if ((event.metaKey || event.ctrlKey) && key === 'h') {
-				event.preventDefault();
-				if (panel.getAttribute('data-show') === 'true') {
-					toggleReplaceBar();
-				} else {
-					openReplaceBar();
-				}
-				return;
-			}
-			if (
-				event.key === 'Escape' &&
-				panel.getAttribute('data-export') === 'true'
-			) {
-				event.preventDefault();
-				closeExportBar();
-				return;
-			}
-			if (
-				event.key === 'Escape' &&
-				panel.getAttribute('data-show') === 'true'
-			) {
-				event.preventDefault();
-				closeSearchBar();
-				return;
-			}
-		}
-
-		input.addEventListener('input', onInputChange);
-		input.addEventListener('keydown', (event) => {
-			if (event.key === 'Enter') {
-				event.preventDefault();
-				if (event.shiftKey) {
-					onPrev();
-				} else {
-					onNext();
-				}
-			}
-			if (event.key === 'Escape') {
-				event.preventDefault();
-				closeSearchBar();
-			}
-		});
-		nextBtn.addEventListener('click', onNext);
-		prevBtn.addEventListener('click', onPrev);
-		toggleReplaceBtn.addEventListener('click', toggleReplaceBar);
-		replaceBtn.addEventListener('click', onReplace);
-		replaceAllBtn.addEventListener('click', onReplaceAll);
-		closeBtn.addEventListener('click', closeSearchBar);
-		replaceInput.addEventListener('keydown', (event) => {
-			if (event.key === 'Enter') {
-				event.preventDefault();
-				onReplace();
-			}
-			if (event.key === 'Escape') {
-				event.preventDefault();
-				closeSearchBar();
-			}
-		});
-		exportToggleBtn.addEventListener('click', toggleExportBar);
-		exportClipboardBtn.addEventListener('click', () =>
-			sendExportRequest('clipboard'),
-		);
-		exportFileBtn.addEventListener('click', () => sendExportRequest('file'));
-		window.addEventListener('keydown', onKeyDown);
-
-		updateCount();
-		setSearchStateChangeListener(() => {
-			if (panel.getAttribute('data-show') === 'true') {
-				updateCount();
-			}
-		});
-
-		disposeSearchUi = () => {
-			window.removeEventListener('keydown', onKeyDown);
-			view.dom.removeEventListener('focusout', onEditorFocusOut);
-			setSearchStateChangeListener(null);
-			panel.remove();
-		};
-	});
-}
 
 async function createEditor(
 	container: HTMLElement,
@@ -982,7 +288,7 @@ async function createEditor(
 		.use(syncPlugin)
 		.use(headingExtractPlugin)
 		.use(wordCountPlugin)
-		.use(visualLineNumbersPlugin)
+		.use(visualLineNumbersController.plugin)
 		.use(searchPlugin)
 		.use(headingFoldPlugin)
 		.use(codeBlockPlugin)
@@ -1009,10 +315,19 @@ async function createEditor(
 			serializer(ctx.get(editorStateCtx).doc),
 		);
 	});
-	setupSearchUi(instance);
-	instance.action((_ctx) => {
-		updateVisualLineNumbers(visualLineNumbersEnabled);
+	if (disposeSearchUi) {
+		disposeSearchUi();
+		disposeSearchUi = null;
+	}
+	disposeSearchUi = mountSearchPanel(instance, {
+		onEditorFocusOut: () => {
+			setTimeout(maybeApplyPendingRemoteUpdate, 0);
+		},
+		postMessage: (message) => {
+			vscode.postMessage(message);
+		},
 	});
+	visualLineNumbersController.updateEnabled(visualLineNumbersEnabled);
 
 	isInitializing = false;
 	return instance;
@@ -1061,7 +376,7 @@ function replaceContent(newMarkdown: string): void {
 			isUpdatingFromExtension = false;
 			sendHeadings(updatedDoc);
 			sendWordCount(updatedDoc);
-			updateVisualLineNumbers(visualLineNumbersEnabled);
+			visualLineNumbersController.updateEnabled(visualLineNumbersEnabled);
 		});
 	} catch {
 		isUpdatingFromExtension = false;
@@ -1199,13 +514,7 @@ window.addEventListener('message', (event) => {
 				setDocumentDirUri(message.documentDirUri);
 			}
 			visualLineNumbersEnabled = message.visualLineNumbers;
-			document.body.setAttribute(
-				'data-visual-line-numbers',
-				visualLineNumbersEnabled ? 'true' : 'false',
-			);
-			if (!visualLineNumbersEnabled) {
-				hideVisualLineNumbers();
-			}
+			visualLineNumbersController.updateEnabled(visualLineNumbersEnabled);
 			createEditor(container, message.body)
 				.then((e) => {
 					editor = e;
