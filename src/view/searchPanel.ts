@@ -2,7 +2,7 @@ import type { Editor } from '@milkdown/core';
 import { editorViewCtx } from '@milkdown/core';
 import { TextSelection } from '@milkdown/prose/state';
 import type { ExportMode, RequestExportMessage } from '../protocol/messages';
-import { resolveSearchPanelHotkey } from './searchPanelHotkeys';
+import { runSearchPanelHotkey } from './searchPanelHotkeys';
 import {
 	clearSearchAction,
 	getSearchState,
@@ -258,41 +258,32 @@ export function mountSearchPanel(
 		}
 
 		function onKeyDown(event: KeyboardEvent): void {
-			const action = resolveSearchPanelHotkey({
-				key: event.key,
-				ctrlKey: event.ctrlKey,
-				metaKey: event.metaKey,
-				shiftKey: event.shiftKey,
-				isSearchOpen: panel.getAttribute('data-show') === 'true',
-				isExportOpen: panel.getAttribute('data-export') === 'true',
-			});
+			const action = runSearchPanelHotkey(
+				{
+					key: event.key,
+					ctrlKey: event.ctrlKey,
+					metaKey: event.metaKey,
+					shiftKey: event.shiftKey,
+					isSearchOpen: panel.getAttribute('data-show') === 'true',
+					isExportOpen: panel.getAttribute('data-export') === 'true',
+				},
+				{
+					openSearch: openSearchBar,
+					next: onNext,
+					prev: onPrev,
+					toggleReplaceOrOpen: () => {
+						if (panel.getAttribute('data-show') === 'true') {
+							toggleReplaceBar();
+						} else {
+							openReplaceBar();
+						}
+					},
+					closeExport: closeExportBar,
+					closeSearch: closeSearchBar,
+				},
+			);
 			if (!action) return;
 			event.preventDefault();
-			if (action === 'openSearch') {
-				openSearchBar();
-				return;
-			}
-			if (action === 'next') {
-				onNext();
-				return;
-			}
-			if (action === 'prev') {
-				onPrev();
-				return;
-			}
-			if (action === 'toggleReplaceOrOpen') {
-				if (panel.getAttribute('data-show') === 'true') {
-					toggleReplaceBar();
-				} else {
-					openReplaceBar();
-				}
-				return;
-			}
-			if (action === 'closeExport') {
-				closeExportBar();
-				return;
-			}
-			closeSearchBar();
 		}
 
 		input.addEventListener('input', onInputChange);

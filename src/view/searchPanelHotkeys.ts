@@ -6,6 +6,15 @@ export type SearchPanelHotkeyAction =
 	| 'closeExport'
 	| 'closeSearch';
 
+export interface SearchPanelHotkeyHandlers {
+	openSearch: () => void;
+	next: () => void;
+	prev: () => void;
+	toggleReplaceOrOpen: () => void;
+	closeExport: () => void;
+	closeSearch: () => void;
+}
+
 export interface ResolveSearchPanelHotkeyInput {
 	key: string;
 	ctrlKey: boolean;
@@ -40,4 +49,34 @@ export function resolveSearchPanelHotkey(
 		return 'closeSearch';
 	}
 	return null;
+}
+
+export function runSearchPanelHotkey(
+	input: ResolveSearchPanelHotkeyInput,
+	handlers: SearchPanelHotkeyHandlers,
+): SearchPanelHotkeyAction | null {
+	const action = resolveSearchPanelHotkey(input);
+	if (!action) return null;
+	if (action === 'openSearch') {
+		handlers.openSearch();
+		return action;
+	}
+	if (action === 'next') {
+		handlers.next();
+		return action;
+	}
+	if (action === 'prev') {
+		handlers.prev();
+		return action;
+	}
+	if (action === 'toggleReplaceOrOpen') {
+		handlers.toggleReplaceOrOpen();
+		return action;
+	}
+	if (action === 'closeExport') {
+		handlers.closeExport();
+		return action;
+	}
+	handlers.closeSearch();
+	return action;
 }
