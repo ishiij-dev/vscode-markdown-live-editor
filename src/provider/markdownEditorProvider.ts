@@ -6,6 +6,7 @@ import {
 	isEditorToHostMessage,
 	type RequestExportMessage,
 } from '../protocol/messages';
+import { hashText } from '../shared/hash';
 import type { OutlineProvider } from './outlineProvider';
 import {
 	consumeDocumentChange,
@@ -116,15 +117,6 @@ export class MarkdownEditorProvider implements vscode.CustomTextEditorProvider {
 		const isSyncDebug = vscode.workspace
 			.getConfiguration('markdownLiveEditor')
 			.get<boolean>('syncDebugLogs', false);
-
-		const hashText = (value: string): number => {
-			let hash = 2166136261;
-			for (let i = 0; i < value.length; i += 1) {
-				hash ^= value.charCodeAt(i);
-				hash = Math.imul(hash, 16777619);
-			}
-			return hash >>> 0;
-		};
 
 		const logSync = (event: string, payload: Record<string, unknown> = {}) => {
 			if (!isSyncDebug) return;
