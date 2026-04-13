@@ -6,6 +6,7 @@ import {
 	dedupeNearbyRowTops,
 	shouldMergeNearbyTop,
 } from './editorTestUtils';
+import { shouldRenderVisualLineNumbersUpdate } from './visualLineNumbersUtils';
 
 interface VisualLineNumbersControllerOptions {
 	isUpdateBlocked: () => boolean;
@@ -318,11 +319,18 @@ export function createVisualLineNumbersController(
 				window.addEventListener('resize', onViewportChange);
 				return {
 					update(view, prevState) {
-						if (options.isUpdateBlocked()) return;
 						const docChanged = !view.state.doc.eq(prevState.doc);
 						const selChanged = !view.state.selection.eq(prevState.selection);
-						if (!docChanged && !selChanged) return;
-						if (!visualLineNumbersEnabled) return;
+						if (
+							!shouldRenderVisualLineNumbersUpdate({
+								isBlocked: options.isUpdateBlocked(),
+								enabled: visualLineNumbersEnabled,
+								docChanged,
+								selChanged,
+							})
+						) {
+							return;
+						}
 						scheduleVisualLineNumbersRender();
 					},
 					destroy() {
