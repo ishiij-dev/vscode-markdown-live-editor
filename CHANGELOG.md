@@ -2,6 +2,23 @@
 
 All notable changes to Markdown Live Editor will be documented in this file.
 
+## [0.6.1] - 2026-04-13
+
+### Added
+
+- Added `markdownLiveEditor.syncDebugLogs` setting and `Markdown Live Editor: Copy Sync Debug Info` command for sync/IME troubleshooting
+- Added host/view sync debug aggregation so copied diagnostics include both extension-host and webview events
+- Added unit test coverage for shared hash utility, visual-line update decision helper, and search hotkey wiring
+
+### Changed
+
+- Refactored webview editor code by splitting large `view.ts` responsibilities into focused modules (`searchPanel`, `visualLineNumbers`, shared helpers)
+- Made sync debug logging toggle apply immediately to already-open editor panels without requiring reopen
+
+### Fixed
+
+- Fixed CSS `noDescendingSpecificity` lint warnings in search export row and highlight selector blocks
+
 ## [0.6.0] - 2026-04-12
 
 ### Added
