@@ -113,6 +113,14 @@ If you see cursor jumps or unexpected sync behavior:
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup and build instructions.
 
+## Support
+
+If Markdown Live Editor helps your workflow, you can support ongoing maintenance and improvements:
+
+- GitHub Sponsors: https://github.com/sponsors/ishiij-dev
+
+Support is optional and does not affect feature availability.
+
 ## License
 
 [MIT](LICENSE)
