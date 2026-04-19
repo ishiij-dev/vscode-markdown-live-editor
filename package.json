@@ -140,7 +140,7 @@
 		"test:all": "npm run test:unit && npm run test:smoke"
 	},
 	"devDependencies": {
-		"@biomejs/biome": "^2.4.11",
+		"@biomejs/biome": "^2.4.12",
 		"@types/katex": "^0.16.8",
 		"@types/node": "^25.6.0",
 		"@types/vscode": "1.75.0",
@@ -148,7 +148,7 @@
 		"esbuild": "^0.28.0",
 		"npm-run-all2": "^8.0.4",
 		"type-fest": "^5.5.0",
-		"typescript": "^6.0.2"
+		"typescript": "^6.0.3"
 	},
 	"dependencies": {
 		"@milkdown/components": "^7.20.0",
