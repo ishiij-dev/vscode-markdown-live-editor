@@ -2,7 +2,7 @@
 	"name": "markdown-live-editor",
 	"displayName": "Markdown Live Editor",
 	"description": "WYSIWYG Markdown editor for VS Code",
-	"version": "0.6.1",
+	"version": "0.6.2",
 	"publisher": "jishii1204",
 	"icon": "icon.png",
 	"license": "MIT",
