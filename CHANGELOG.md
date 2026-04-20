@@ -2,6 +2,17 @@
 
 All notable changes to Markdown Live Editor will be documented in this file.
 
+## [0.6.2] - 2026-04-20
+
+### Added
+
+- Added GitHub Sponsors funding configuration via `.github/FUNDING.yml`
+- Added a `Support` section in README with a GitHub Sponsors link
+
+### Changed
+
+- Updated `dompurify` from `3.3.2` to `3.4.0` (dependabot)
+
 ## [0.6.1] - 2026-04-13
 
 ### Added
