@@ -140,7 +140,7 @@
 		"test:all": "npm run test:unit && npm run test:smoke"
 	},
 	"devDependencies": {
-		"@biomejs/biome": "^2.4.13",
+		"@biomejs/biome": "^2.4.14",
 		"@types/katex": "^0.16.8",
 		"@types/node": "^25.6.0",
 		"@types/vscode": "1.75.0",
