@@ -151,10 +151,10 @@
 		"typescript": "^6.0.3"
 	},
 	"dependencies": {
-		"@milkdown/components": "^7.20.0",
-		"@milkdown/core": "^7.20.0",
-		"@milkdown/ctx": "^7.20.0",
-		"@milkdown/plugin-slash": "^7.20.0",
+		"@milkdown/components": "^7.21.1",
+		"@milkdown/core": "^7.21.1",
+		"@milkdown/ctx": "^7.21.1",
+		"@milkdown/plugin-slash": "^7.21.1",
 		"@milkdown/plugin-tooltip": "^7.18.0",
 		"@milkdown/preset-commonmark": "^7.18.0",
 		"@milkdown/preset-gfm": "^7.18.0",
