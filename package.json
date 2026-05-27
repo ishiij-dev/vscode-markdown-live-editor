@@ -160,7 +160,7 @@
 		"@milkdown/preset-gfm": "^7.18.0",
 		"@milkdown/prose": "^7.18.0",
 		"highlight.js": "^11.11.1",
-		"katex": "^0.16.46",
+		"katex": "^0.17.0",
 		"mermaid": "^11.15.0",
 		"remark-emoji": "^5.0.2",
 		"remark-frontmatter": "^5.0.0",
