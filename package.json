@@ -144,7 +144,7 @@
 		"@types/katex": "^0.16.8",
 		"@types/node": "^25.9.1",
 		"@types/vscode": "1.75.0",
-		"@vscode/vsce": "^3.9.1",
+		"@vscode/vsce": "^3.9.2",
 		"esbuild": "^0.28.1",
 		"npm-run-all2": "^8.0.4",
 		"type-fest": "^5.7.0",
