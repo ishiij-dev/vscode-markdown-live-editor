@@ -146,7 +146,7 @@
 		"@types/vscode": "1.75.0",
 		"@vscode/vsce": "^3.9.2",
 		"esbuild": "^0.28.1",
-		"npm-run-all2": "^8.0.4",
+		"npm-run-all2": "^9.0.2",
 		"type-fest": "^5.7.0",
 		"typescript": "^6.0.3"
 	},
