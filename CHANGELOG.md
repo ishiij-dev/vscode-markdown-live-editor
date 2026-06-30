@@ -2,6 +2,12 @@
 
 All notable changes to Markdown Live Editor will be documented in this file.
 
+## [0.6.3] - 2026-06-30
+
+### Changed
+
+- Bumped patch version for the next release
+
 ## [0.6.2] - 2026-04-20
 
 ### Added
