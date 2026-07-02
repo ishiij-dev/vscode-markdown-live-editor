@@ -14,6 +14,7 @@ describe('extension manifest smoke', () => {
 			contributes?: {
 				customEditors?: Array<{ viewType: string }>;
 				commands?: Array<{ command: string }>;
+				menus?: Record<string, Array<{ command: string; when?: string }>>;
 			};
 		};
 
@@ -21,6 +22,20 @@ describe('extension manifest smoke', () => {
 		assert.equal(pkg.browser, './dist/web/extension.js');
 		assert.ok(pkg.contributes?.customEditors?.some((e) => e.viewType === 'markdownLiveEditor.editor'));
 		assert.ok(pkg.contributes?.commands?.some((c) => c.command === 'markdownLiveEditor.openEditor'));
+		assert.ok(
+			pkg.contributes?.menus?.['explorer/context']?.some(
+				(menu) =>
+					menu.command === 'markdownLiveEditor.openEditor' &&
+					menu.when === 'resourceExtname == .md || resourceLangId == markdown',
+			),
+		);
+		assert.ok(
+			pkg.contributes?.menus?.['editor/title/context']?.some(
+				(menu) =>
+					menu.command === 'markdownLiveEditor.openEditor' &&
+					menu.when === 'resourceExtname == .md || resourceLangId == markdown',
+			),
+		);
 	});
 
 	it('has required source entry files', () => {

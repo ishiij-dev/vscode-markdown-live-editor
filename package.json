@@ -90,14 +90,14 @@
 		"menus": {
 			"explorer/context": [
 				{
-					"when": "resourceLangId == markdown",
+					"when": "resourceExtname == .md || resourceLangId == markdown",
 					"command": "markdownLiveEditor.openEditor",
 					"group": "navigation"
 				}
 			],
 			"editor/title/context": [
 				{
-					"when": "resourceLangId == markdown",
+					"when": "resourceExtname == .md || resourceLangId == markdown",
 					"command": "markdownLiveEditor.openEditor",
 					"group": "1_open"
 				}
