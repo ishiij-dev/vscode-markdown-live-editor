@@ -63,7 +63,7 @@ After the PR is merged, tag the `main` commit that contains the version bump:
 
 ```bash
 git fetch origin main --tags
-git tag vX.Y.Z origin/main
+git tag -a vX.Y.Z origin/main -m "Release vX.Y.Z"
 git push origin vX.Y.Z
 ```
 
