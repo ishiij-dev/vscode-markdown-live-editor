@@ -32,6 +32,64 @@ npm run lint        # Check
 npm run lint:fix    # Auto-fix
 ```
 
+## Release
+
+Use this checklist for patch or minor releases.
+
+### 1. Update release metadata
+
+- Bump `version` in `package.json`
+- Sync the root package version entries in `package-lock.json`
+- Add a new entry to `CHANGELOG.md`
+
+### 2. Run local validation
+
+```bash
+npm run test:all
+npm run lint
+npm run package
+npx vsce package --no-dependencies
+```
+
+### 3. Open and merge a PR
+
+- Create a branch from `main`
+- Commit only the release metadata changes
+- Open a draft PR and merge it after review
+
+### 4. Tag the merged commit
+
+After the PR is merged, tag the `main` commit that contains the version bump:
+
+```bash
+git fetch origin main --tags
+git tag -a vX.Y.Z origin/main -m "Release vX.Y.Z"
+git push origin vX.Y.Z
+```
+
+Pushing a `v*` tag triggers `.github/workflows/publish.yml`, which publishes to:
+
+- VS Code Marketplace via `vsce publish`
+- Open VSX via `ovsx publish`
+- GitHub Releases via `gh release create`
+
+### 5. Required secrets
+
+The publish workflow depends on these GitHub Actions secrets:
+
+- `VSCE_PAT` for VS Code Marketplace publishing
+- `OVSX_PAT` for Open VSX publishing
+
+If publishing fails with an authentication error, rotate the token in the relevant service and update the GitHub Actions secret.
+
+### 6. Common publish failure
+
+If the `Publish to VS Code Marketplace` step fails with an expired token error, update `VSCE_PAT` in:
+
+- GitHub repository `Settings` -> `Secrets and variables` -> `Actions`
+
+Then re-run the failed jobs for the publish workflow.
+
 ## PR Labels and Quality Workflow
 
 To keep quality work discoverable and triage-friendly, apply labels on every PR:
