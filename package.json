@@ -140,7 +140,7 @@
 		"test:all": "npm run test:unit && npm run test:smoke"
 	},
 	"devDependencies": {
-		"@biomejs/biome": "^2.5.3",
+		"@biomejs/biome": "^2.5.5",
 		"@types/katex": "^0.16.8",
 		"@types/node": "^26.1.1",
 		"@types/vscode": "1.75.0",
@@ -151,16 +151,16 @@
 		"typescript": "^7.0.2"
 	},
 	"dependencies": {
-		"@milkdown/components": "^7.21.2",
-		"@milkdown/core": "^7.21.2",
-		"@milkdown/ctx": "^7.21.2",
-		"@milkdown/plugin-slash": "^7.21.2",
+		"@milkdown/components": "^7.21.3",
+		"@milkdown/core": "^7.21.3",
+		"@milkdown/ctx": "^7.21.3",
+		"@milkdown/plugin-slash": "^7.21.3",
 		"@milkdown/plugin-tooltip": "^7.18.0",
 		"@milkdown/preset-commonmark": "^7.18.0",
 		"@milkdown/preset-gfm": "^7.18.0",
 		"@milkdown/prose": "^7.18.0",
 		"highlight.js": "^11.11.1",
-		"katex": "^0.17.0",
+		"katex": "^0.18.1",
 		"mermaid": "^11.16.0",
 		"remark-emoji": "^5.0.2",
 		"remark-frontmatter": "^5.0.0",
