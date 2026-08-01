@@ -47,6 +47,7 @@ import { mountSearchPanel } from './searchPanel';
 import { searchPlugin } from './searchPlugin';
 import { configureSlash, slash, slashKeyboardPlugin } from './slashPlugin';
 import { configureTableBlock, tableBlock } from './tableBlockPlugin';
+import { taskListPlugin } from './taskListPlugin';
 import {
 	configureCustomLinkTooltip,
 	configureSelectionToolbar,
@@ -311,6 +312,7 @@ async function createEditor(
 		.use(visualLineNumbersController.plugin)
 		.use(searchPlugin)
 		.use(headingFoldPlugin)
+		.use(taskListPlugin)
 		.use(codeBlockPlugin)
 		.use(autoPairPlugin)
 		.use(highlightPlugin)
