@@ -69,6 +69,11 @@ You can export the current editor view as styled HTML in two ways:
 - Click the fold toggle next to a heading to collapse or expand its section
 - Keyboard support: focus the toggle with `Tab`, then press `Enter` or `Space`
 
+### Task Lists
+
+- Click the checkbox of a `- [ ]` item to toggle it between done and not done
+- Only the checkbox itself toggles; clicking the item text places the caret as usual
+
 ### In-editor Find Shortcuts
 
 Because the editor runs inside a webview, it uses its own Find panel.
