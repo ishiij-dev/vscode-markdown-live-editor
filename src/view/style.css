@@ -824,6 +824,7 @@ body {
 	border: 1px solid rgba(128, 128, 128, 0.69);
 	border-radius: 3px;
 	background: transparent;
+	cursor: pointer;
 }
 
 .ProseMirror li[data-checked="true"]::before {

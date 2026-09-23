@@ -4,6 +4,7 @@ import {
 	editorStateCtx,
 	editorViewCtx,
 	parserCtx,
+	remarkCtx,
 	rootCtx,
 	serializerCtx,
 } from '@milkdown/core';
@@ -47,6 +48,7 @@ import { mountSearchPanel } from './searchPanel';
 import { searchPlugin } from './searchPlugin';
 import { configureSlash, slash, slashKeyboardPlugin } from './slashPlugin';
 import { configureTableBlock, tableBlock } from './tableBlockPlugin';
+import { toggleTaskMarker } from './taskListLogic';
 import {
 	configureCustomLinkTooltip,
 	configureSelectionToolbar,
@@ -62,6 +64,28 @@ declare function acquireVsCodeApi(): {
 };
 
 const vscode = acquireVsCodeApi();
+
+function isTaskCheckboxClick(
+	listItem: HTMLElement,
+	event: MouseEvent,
+): boolean {
+	const markerStyle = getComputedStyle(listItem, '::before');
+	const markerTop = Number.parseFloat(markerStyle.top);
+	const markerWidth =
+		Number.parseFloat(markerStyle.width) +
+		Number.parseFloat(markerStyle.borderLeftWidth) +
+		Number.parseFloat(markerStyle.borderRightWidth);
+	const markerHeight =
+		Number.parseFloat(markerStyle.height) +
+		Number.parseFloat(markerStyle.borderTopWidth) +
+		Number.parseFloat(markerStyle.borderBottomWidth);
+
+	return (
+		event.offsetX <= markerWidth &&
+		event.offsetY >= markerTop &&
+		event.offsetY <= markerTop + markerHeight
+	);
+}
 
 // Global error handler — show errors visually in the webview
 function showError(msg: string): void {
@@ -87,6 +111,7 @@ let syncDebugSeq = 0;
 // We compare against the normalized baseline to detect real user changes.
 // This prevents the file from being dirtied just by opening it in the editor.
 let normalizedBaseline = '';
+let sourceMarkdown = '';
 let isInitializing = false;
 
 // Debounce timer for sending updates to the extension host.
@@ -161,9 +186,63 @@ const syncPlugin = $prose((ctx) => {
 						});
 						vscode.postMessage({ type: 'update', body: md });
 						normalizedBaseline = md;
+						sourceMarkdown = md;
 					}, UPDATE_DELAY_MS);
 				},
 			};
+		},
+	});
+});
+
+const taskListTogglePlugin = $prose((ctx) => {
+	return new Plugin({
+		props: {
+			handleDOMEvents: {
+				click(view, event) {
+					const listItem = event.target;
+					if (
+						!(listItem instanceof HTMLLIElement) ||
+						!listItem.hasAttribute('data-checked') ||
+						!isTaskCheckboxClick(listItem, event)
+					) {
+						return false;
+					}
+
+					const taskIndex = [
+						...view.dom.querySelectorAll('li[data-checked]'),
+					].indexOf(listItem);
+					const checked = listItem.dataset.checked !== 'true';
+					const preserveSource = updateTimer === null;
+					const nextMarkdown = preserveSource
+						? toggleTaskMarker(
+								sourceMarkdown,
+								ctx.get(remarkCtx).parse(sourceMarkdown),
+								taskIndex,
+								checked,
+							)
+						: sourceMarkdown;
+					if (preserveSource && nextMarkdown === sourceMarkdown) return false;
+
+					event.preventDefault();
+					view.dispatch(
+						view.state.tr.setNodeAttribute(
+							view.posAtDOM(listItem, 0) - 1,
+							'checked',
+							checked,
+						),
+					);
+					view.focus();
+					if (!preserveSource) return true;
+					if (updateTimer) clearTimeout(updateTimer);
+					updateTimer = null;
+					normalizedBaseline = cleanupTableBr(
+						ctx.get(serializerCtx)(view.state.doc),
+					);
+					sourceMarkdown = nextMarkdown;
+					vscode.postMessage({ type: 'update', body: nextMarkdown });
+					return true;
+				},
+			},
 		},
 	});
 });
@@ -289,6 +368,7 @@ async function createEditor(
 	markdown: string,
 ): Promise<Editor> {
 	isInitializing = true;
+	sourceMarkdown = markdown;
 
 	const instance = Editor.make()
 		.config((ctx) => {
@@ -297,6 +377,7 @@ async function createEditor(
 		})
 		.use(commonmark)
 		.use(gfm)
+		.use(taskListTogglePlugin)
 		.use(tableBlock)
 		.config(configureTableBlock)
 		.use(remarkFrontmatterPlugin)
@@ -367,6 +448,7 @@ function replaceContent(newMarkdown: string): void {
 			);
 
 			if (currentMarkdown === newMarkdown) {
+				sourceMarkdown = newMarkdown;
 				syncDebug('replace-skip-equal', {
 					incomingLength: newMarkdown.length,
 					incomingHash: hashText(newMarkdown),
@@ -389,6 +471,7 @@ function replaceContent(newMarkdown: string): void {
 			const { tr } = view.state;
 			tr.replaceWith(0, view.state.doc.content.size, newDoc.content);
 			view.dispatch(tr);
+			sourceMarkdown = newMarkdown;
 
 			// Update baseline to the new normalized content
 			const updatedDoc = ctx.get(editorStateCtx).doc;
