@@ -21,6 +21,7 @@ import {
 import { hashText } from '../shared/hash';
 import { alertPlugin } from './alertPlugin';
 import { autoPairPlugin } from './autoPairPlugin';
+import { changedBlockRange } from './blockDiffUtils';
 import { codeBlockPlugin, highlightPlugin } from './codeBlockPlugin';
 import {
 	cleanupTableBr,
@@ -43,6 +44,7 @@ import {
 	mathViewPlugin,
 	remarkMathPlugin,
 } from './katexPlugin';
+import { decidePendingUpdate } from './pendingUpdateUtils';
 import { mountSearchPanel } from './searchPanel';
 import { searchPlugin } from './searchPlugin';
 import { configureSlash, slash, slashKeyboardPlugin } from './slashPlugin';
@@ -93,6 +95,16 @@ let isInitializing = false;
 // Batches rapid keystrokes into a single postMessage call.
 let updateTimer: ReturnType<typeof setTimeout> | null = null;
 const UPDATE_DELAY_MS = 300;
+
+// Remote updates are deferred while the editor is focused so the caret is not
+// disturbed mid-keystroke, but they must still land without waiting for a
+// focusout: undo/redo is handled by VS Code (the webview has no history
+// plugin), so it edits the TextDocument and comes back as a remote update
+// while focus stays in the editor.
+let pendingFlushTimer: ReturnType<typeof setTimeout> | null = null;
+let lastLocalEditAt = 0;
+let pendingQueuedAt = 0;
+const PENDING_POLL_MS = 40;
 let disposeSearchUi: (() => void) | null = null;
 const SYNC_DEBUG_STORAGE_KEY = 'markdownLiveEditor.syncDebug';
 let visualLineNumbersEnabled = false;
@@ -146,6 +158,7 @@ const syncPlugin = $prose((ctx) => {
 					if (isInitializing || isUpdatingFromExtension) return;
 					if (view.state.doc.eq(prevState.doc)) return;
 
+					lastLocalEditAt = Date.now();
 					if (updateTimer) clearTimeout(updateTimer);
 					updateTimer = setTimeout(() => {
 						updateTimer = null;
@@ -353,6 +366,14 @@ async function createEditor(
 	return instance;
 }
 
+function topLevelBlocks(doc: ProseMirrorNode): ProseMirrorNode[] {
+	const blocks: ProseMirrorNode[] = [];
+	doc.content.forEach((child) => {
+		blocks.push(child);
+	});
+	return blocks;
+}
+
 function replaceContent(newMarkdown: string): void {
 	if (!editor) {
 		return;
@@ -377,6 +398,14 @@ function replaceContent(newMarkdown: string): void {
 
 			const parser = ctx.get(parserCtx);
 			const newDoc = parser(newMarkdown);
+			// Replace only the top-level blocks that differ. Replacing the whole
+			// document maps the selection into a range that no longer exists and
+			// pushes the caret to the end of the replacement, which is visible on
+			// every undo and every external edit to the file.
+			const range = changedBlockRange(
+				topLevelBlocks(view.state.doc),
+				topLevelBlocks(newDoc),
+			);
 			syncDebug('replace-apply', {
 				incomingLength: newMarkdown.length,
 				incomingHash: hashText(newMarkdown),
@@ -385,10 +414,28 @@ function replaceContent(newMarkdown: string): void {
 				focus: view.hasFocus(),
 				selectionFrom: view.state.selection.from,
 				selectionTo: view.state.selection.to,
+				replacedFrom: range.from,
+				replacedTo: range.to,
 			});
 			const { tr } = view.state;
-			tr.replaceWith(0, view.state.doc.content.size, newDoc.content);
+			tr.replaceWith(
+				range.from,
+				range.to,
+				newDoc.content.cut(range.newFrom, range.newTo),
+			);
 			view.dispatch(tr);
+
+			// Safety net: a narrowed replacement must reproduce the incoming
+			// document exactly. If it does not, fall back to replacing everything
+			// so content is never left in a wrong state.
+			if (!view.state.doc.eq(newDoc)) {
+				syncDebug('replace-fallback-full', {
+					incomingHash: hashText(newMarkdown),
+				});
+				const fallbackTr = view.state.tr;
+				fallbackTr.replaceWith(0, view.state.doc.content.size, newDoc.content);
+				view.dispatch(fallbackTr);
+			}
 
 			// Update baseline to the new normalized content
 			const updatedDoc = ctx.get(editorStateCtx).doc;
@@ -405,6 +452,13 @@ function replaceContent(newMarkdown: string): void {
 
 function isEditorViewFocused(): boolean {
 	if (!editor) return false;
+	// ProseMirror's hasFocus() compares against root.activeElement, which stays
+	// set after the webview iframe loses focus. Without this check the editor
+	// keeps reporting focus once it has been clicked, so every remote update is
+	// queued and only a later focusout can flush it.
+	if (typeof document.hasFocus === 'function' && !document.hasFocus()) {
+		return false;
+	}
 	let focused = false;
 	try {
 		editor.action((ctx) => {
@@ -430,6 +484,47 @@ function maybeApplyPendingRemoteUpdate(): void {
 	pendingRemoteMarkdown = null;
 	syncDebug('pending-apply', { length: queued.length, hash: hashText(queued) });
 	replaceContent(queued);
+}
+
+// Applies a queued remote update as soon as it is safe to do so, so undo/redo
+// and external file edits land while the editor keeps focus.
+function schedulePendingFlush(): void {
+	if (pendingFlushTimer) clearTimeout(pendingFlushTimer);
+	pendingFlushTimer = setTimeout(() => {
+		pendingFlushTimer = null;
+		if (!pendingRemoteMarkdown) return;
+
+		// updateTimer is non-null exactly while local edits have not reached the
+		// host yet, so it answers "is the snapshot missing local edits?" without
+		// guessing at a quiet period with a fixed delay.
+		const decision = decidePendingUpdate({
+			queuedAt: pendingQueuedAt,
+			lastLocalEditAt,
+			hasUnsyncedLocalEdits: updateTimer !== null,
+		});
+
+		if (decision === 'discard') {
+			syncDebug('pending-discard-stale', {
+				length: pendingRemoteMarkdown.length,
+				hash: hashText(pendingRemoteMarkdown),
+			});
+			pendingRemoteMarkdown = null;
+			return;
+		}
+
+		if (decision === 'wait') {
+			schedulePendingFlush();
+			return;
+		}
+
+		const queued = pendingRemoteMarkdown;
+		pendingRemoteMarkdown = null;
+		syncDebug('pending-apply-idle', {
+			length: queued.length,
+			hash: hashText(queued),
+		});
+		replaceContent(queued);
+	}, PENDING_POLL_MS);
 }
 
 function buildExportHtml(style: string, customStyle: string): string {
@@ -558,10 +653,12 @@ window.addEventListener('message', (event) => {
 			});
 			if (isEditorViewFocused()) {
 				pendingRemoteMarkdown = message.body;
+				pendingQueuedAt = Date.now();
 				syncDebug('host-update-queued', {
 					length: message.body.length,
 					hash: hashText(message.body),
 				});
+				schedulePendingFlush();
 				break;
 			}
 			replaceContent(message.body);
