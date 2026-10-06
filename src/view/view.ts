@@ -36,6 +36,8 @@ import {
 	remarkFrontmatterPlugin,
 } from './frontmatterPlugin';
 import { headingFoldPlugin } from './headingFoldPlugin';
+import { excludeFromUndoHistory } from './history';
+import { undoRedoHistoryPlugin, undoRedoKeymapPlugin } from './historyPlugin';
 import { imageViewPlugin, setDocumentDirUri } from './imagePlugin';
 import {
 	mathDisplaySchema,
@@ -305,6 +307,8 @@ async function createEditor(
 		.use(mathInlineSchema)
 		.use(mathDisplaySchema)
 		.use(emojiPlugin)
+		.use(undoRedoHistoryPlugin)
+		.use(undoRedoKeymapPlugin)
 		.use(syncPlugin)
 		.use(headingExtractPlugin)
 		.use(wordCountPlugin)
@@ -388,7 +392,7 @@ function replaceContent(newMarkdown: string): void {
 			});
 			const { tr } = view.state;
 			tr.replaceWith(0, view.state.doc.content.size, newDoc.content);
-			view.dispatch(tr);
+			view.dispatch(excludeFromUndoHistory(tr));
 
 			// Update baseline to the new normalized content
 			const updatedDoc = ctx.get(editorStateCtx).doc;
