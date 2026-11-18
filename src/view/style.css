@@ -38,6 +38,18 @@ body {
 	word-wrap: break-word;
 }
 
+.ProseMirror-gapcursor {
+	display: none;
+	pointer-events: none;
+	position: absolute;
+	border-top: 1px solid var(--vscode-editorCursor-foreground, currentColor);
+	width: 20px;
+}
+
+.ProseMirror-focused .ProseMirror-gapcursor {
+	display: block;
+}
+
 /* Reset margin top */
 .ProseMirror h1,
 .ProseMirror h2,
