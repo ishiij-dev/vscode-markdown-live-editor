@@ -7,6 +7,7 @@ import {
 	rootCtx,
 	serializerCtx,
 } from '@milkdown/core';
+import type { Ctx } from '@milkdown/ctx';
 import { commonmark } from '@milkdown/preset-commonmark';
 import { gfm } from '@milkdown/preset-gfm';
 import type { Node as ProseMirrorNode } from '@milkdown/prose/model';
@@ -46,7 +47,12 @@ import {
 import { mountSearchPanel } from './searchPanel';
 import { searchPlugin } from './searchPlugin';
 import { configureSlash, slash, slashKeyboardPlugin } from './slashPlugin';
-import { configureTableBlock, tableBlock } from './tableBlockPlugin';
+import {
+	configureTableBlock,
+	tableBlock,
+	tableBoundaryBackspace,
+} from './tableBlockPlugin';
+import { preserveTrailingTableBlankLine } from './tableBoundaryBackspace.mjs';
 import {
 	configureCustomLinkTooltip,
 	configureSelectionToolbar,
@@ -134,6 +140,13 @@ function syncDebug(event: string, payload: Record<string, unknown> = {}): void {
 	});
 }
 
+function serializeMarkdown(ctx: Ctx, doc: ProseMirrorNode): string {
+	return preserveTrailingTableBlankLine(
+		cleanupTableBr(ctx.get(serializerCtx)(doc)),
+		doc,
+	);
+}
+
 // ProseMirror plugin that detects doc changes and syncs to the extension host.
 // Unlike Milkdown's markdownUpdated listener, this does NOT serialize the
 // document on every keystroke. Serialization only happens when the debounce
@@ -149,8 +162,7 @@ const syncPlugin = $prose((ctx) => {
 					if (updateTimer) clearTimeout(updateTimer);
 					updateTimer = setTimeout(() => {
 						updateTimer = null;
-						const serializer = ctx.get(serializerCtx);
-						const md = cleanupTableBr(serializer(view.state.doc));
+						const md = serializeMarkdown(ctx, view.state.doc);
 						if (md === normalizedBaseline) return;
 						syncDebug('post-update', {
 							length: md.length,
@@ -295,6 +307,7 @@ async function createEditor(
 			ctx.set(rootCtx, container);
 			ctx.set(defaultValueCtx, markdown);
 		})
+		.use(tableBoundaryBackspace)
 		.use(commonmark)
 		.use(gfm)
 		.use(tableBlock)
@@ -330,10 +343,7 @@ async function createEditor(
 
 	// Capture the normalized baseline after editor is fully initialized
 	instance.action((ctx) => {
-		const serializer = ctx.get(serializerCtx);
-		normalizedBaseline = cleanupTableBr(
-			serializer(ctx.get(editorStateCtx).doc),
-		);
+		normalizedBaseline = serializeMarkdown(ctx, ctx.get(editorStateCtx).doc);
 	});
 	if (disposeSearchUi) {
 		disposeSearchUi();
@@ -361,10 +371,7 @@ function replaceContent(newMarkdown: string): void {
 	try {
 		editor.action((ctx) => {
 			const view = ctx.get(editorViewCtx);
-			const serializer = ctx.get(serializerCtx);
-			const currentMarkdown = cleanupTableBr(
-				serializer(ctx.get(editorStateCtx).doc),
-			);
+			const currentMarkdown = serializeMarkdown(ctx, view.state.doc);
 
 			if (currentMarkdown === newMarkdown) {
 				syncDebug('replace-skip-equal', {
@@ -392,7 +399,7 @@ function replaceContent(newMarkdown: string): void {
 
 			// Update baseline to the new normalized content
 			const updatedDoc = ctx.get(editorStateCtx).doc;
-			normalizedBaseline = cleanupTableBr(serializer(updatedDoc));
+			normalizedBaseline = serializeMarkdown(ctx, updatedDoc);
 			isUpdatingFromExtension = false;
 			sendHeadings(updatedDoc);
 			sendWordCount(updatedDoc);

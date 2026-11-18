@@ -1,5 +1,9 @@
 import { tableBlock, tableBlockConfig } from '@milkdown/components/table-block';
 import type { Ctx } from '@milkdown/ctx';
+import { GapCursor, gapCursor } from '@milkdown/prose/gapcursor';
+import { Plugin } from '@milkdown/prose/state';
+import { $prose } from '@milkdown/utils';
+import { backspaceAfterTable } from './tableBoundaryBackspace.mjs';
 
 // 16x16 SVG icons using currentColor for VS Code theme integration
 const plusIcon =
@@ -21,6 +25,26 @@ const dragHandleIcon =
 	'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" width="16" height="16"><path fill="currentColor" d="M5.5 3a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3Zm5 0a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3ZM7 8a1.5 1.5 0 1 0-3 0 1.5 1.5 0 0 0 3 0Zm3.5-1.5a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3ZM7 13a1.5 1.5 0 1 0-3 0 1.5 1.5 0 0 0 3 0Zm3.5-1.5a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3Z"/></svg>';
 
 export { tableBlock };
+
+export const tableBoundaryBackspace = $prose(() => {
+	const gap = gapCursor();
+	return new Plugin({
+		props: {
+			decorations: gap.props.decorations,
+			handleDOMEvents: gap.props.handleDOMEvents,
+			handleKeyDown(view, event) {
+				if (event.isComposing || view.composing) return false;
+				if (event.key === 'Backspace') {
+					return backspaceAfterTable(view.state, view.dispatch);
+				}
+				return (
+					view.state.selection instanceof GapCursor &&
+					gap.props.handleKeyDown?.call(gap, view, event) === true
+				);
+			},
+		},
+	});
+});
 
 export function configureTableBlock(ctx: Ctx): void {
 	ctx.update(tableBlockConfig.key, (defaultConfig) => ({
